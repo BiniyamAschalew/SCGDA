@@ -3,13 +3,14 @@ import warnings
 
 import torch
 from torch_geometric.data import Data
+from torch_geometric.io import read_txt_array
 
 from data.base_dataset import BaseDataset
 
 warnings.filterwarnings("ignore", category=DeprecationWarning)
 
 
-class CitationDataset(BaseDataset):
+class MAGDataset(BaseDataset):
     def __init__(
         self,
         name: str,
@@ -18,7 +19,7 @@ class CitationDataset(BaseDataset):
         pre_transform=None,
         pre_filter=None,
     ):
-        super(CitationDataset, self).__init__(
+        super(MAGDataset, self).__init__(
             name, config, transform, pre_transform, pre_filter
         )
 
@@ -26,9 +27,9 @@ class CitationDataset(BaseDataset):
 
     def process(self):
 
-        edge_index = self.load_edge_index()
-        x = self.load_docs()
-        y = self.load_labels()
+        path = osp.join(self.raw_dir, '{}_labels_20.pt'.format(self.name))
+        graph = torch.load(path)
+        x, edge_index, y = graph.x, graph.edge_index, graph.y
 
         train_masks, val_masks, test_masks = self.create_masks(y)
 
@@ -51,5 +52,9 @@ class CitationDataset(BaseDataset):
 
         data, slices = self.collate(data_list)
         torch.save((data, slices), self.processed_paths[0])
+
+
+
+
 
 

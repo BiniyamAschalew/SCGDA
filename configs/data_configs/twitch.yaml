@@ -1,0 +1,11 @@
+name: "Twitch"
+
+root: "/data/biniyam/datasets/pygda_data/data/Twitch"
+domains: ["DE", "EN", "ES", "FR", "PT", "RU"]
+
+raw_file_names: ["edges.csv", "features.json", "target.csv"]
+processed_file_names: ["data.pt"]
+
+train_split: 0.8
+val_split: 0.2
+test_split: 0.0 # actually unused

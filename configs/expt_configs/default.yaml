@@ -1,0 +1,33 @@
+### general training procedure
+seed: 0
+device: "cuda:0"
+id: 0
+
+verbose: 1
+save_model: True
+model_path: "./__saved__/models"
+tuned_config_path: "./hps/tuned"
+
+
+### training
+epochs: 200
+
+### early stopping
+early_stopping: False
+early_stopping_metric: "micro_f1"
+patience: 50
+min_delta: 0
+
+#### dataset
+source: 'ACMv9'
+target: 'DBLPv7'
+
+
+#### Wandb & Logging
+wandb_enabled: False
+project: 'April'
+tag: 'demo'
+use_time: True
+
+#### metrics
+metrics: ["micro_f1", "macro_f1"]
