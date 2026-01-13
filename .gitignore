@@ -1,3 +1,9 @@
+# Custom
+__external__/
+__design__/
+# any folder with the form __*__ is ignored
+__*__/
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[codz]
