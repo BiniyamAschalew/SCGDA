@@ -1,7 +1,7 @@
 name: "MAG"
 
 root: "/data/biniyam/datasets/pygda_data/data/MAG"
-domains: ["ACMv9", "Citationv1", "DBLPv7"]
+domains: ["MAG_CN", "MAG_DE", "MAG_FR", "MAG_RU", "MAG_JP", "MAG_US"]
 
 raw_file_names: ["labels_20.pt"]
 processed_file_names: ["data.pt"]

@@ -44,8 +44,7 @@ class GNN(BaseGDA):
         source_logits = self.gnn(source_data.x, source_data.edge_index)
         target_logits = self.gnn(target_data.x, target_data.edge_index)
 
-        loss = F.nll_loss(F.log_softmax(source_logits, dim=1), source_data.y)
-
+        loss = F.nll_loss(source_logits, source_data.y)
         return loss, source_logits, target_logits
 
 

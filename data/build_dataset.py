@@ -38,6 +38,9 @@ def get_dataset(domain: str, config: dict):
     elif domain in {"DE", "EN", "ES", "FR", "PT", "RU"}:
         dataset = TwitchDataset(domain, config)
 
+    elif domain in {"MAG_CN", "MAG_DE", "MAG_FR", "MAG_RU", "MAG_JP", "MAG_US"}:
+        dataset = MAGDataset(domain, config)
+
     else:
         raise ValueError(f"Invalid domain {domain}")
 
