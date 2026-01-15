@@ -7,6 +7,9 @@ import torch
 from torch.nn import Linear, Sequential
 from torch_geometric.loader import NeighborLoader
 
+from utils.train_utils.metrics import BaseMetric
+from utils.expt_utils import WandbHandler
+
 
 class BaseGDA(ABC):
 
@@ -53,6 +56,10 @@ class BaseGDA(ABC):
         self.early_stopping_metric = config["expt"].get("early_stopping_metric", "micro_f1")
 
         self.kwargs = config["model"]
+
+        # needed in all the other models
+        self.metrics = BaseMetric(config)
+        self.wandb = WandbHandler(config)
 
         # self.num_neigh should be a list of length num_layers
         if type(self.num_neigh) is int:
@@ -130,25 +137,16 @@ class BaseGDA(ABC):
 
         return "continue" # do not stop
 
-    # def get_loader(self, data, batch_size=0, mask=None):
+    def log(self, epoch, epoch_loss, train_results):
 
-    #     # sanitize graph and masks to avoid pyg sampler contiguity issues
-    #     if data.edge_index is not None:
-    #         data.edge_index = data.edge_index.clone().contiguous()
-    #     if mask is not None:
-    #         mask = mask.clone().contiguous()
+        if self.verbose >= 1:
+            print(f"Epoch {epoch+1:03d}, Loss: {epoch_loss:.4f}")
+        if self.verbose >= 2:
+            print(f"train results: {train_results}")    
 
-    #     # if batch_size is 0, we use full batch training
-    #     if batch_size == 0:
-    #         if mask is None:
-    #             batch_size = data.x.shape[0]
-    #         else:
-    #             batch_size = mask.sum().item()
-
-    #     num_neigh = self.num_neigh
-    #     if isinstance(num_neigh, int):
-    #         num_neigh = [num_neigh] * self.num_layers
-
-    #     loader = NeighborLoader(data, num_neigh, batch_size=batch_size, input_nodes=mask)
-    #     return loader
+        self.wandb.log({
+            "epoch": epoch + 1,
+            "Loss": epoch_loss,
+            "train metrics": train_results,
+        })
 

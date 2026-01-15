@@ -3,37 +3,37 @@ from run import run
 
 dataset = "citation"
 source = "ACMv9"
-target = "DBLPv7"
+target = "Citationv1"
 
-dataset = "blog"
-source = "Blog2"
-target = "Blog1"
+# dataset = "blog"
+# source = "Blog2"
+# target = "Blog1"
 
-dataset = "airport"
-source = "USA"
-target = "Brazil"
+# dataset = "airport"
+# source = "BRAZIL"
+# target = "EUROPE"
 
-dataset = "twitch"
-source = "DE"
-target = "EN"
+# dataset = "twitch"
+# source = "DE"
+# target = "EN"
 
-dataset = "mag"
-source = "MAG_FR"
-target = "MAG_JP"
+# dataset = "mag"
+# source = "MAG_FR"
+# target = "MAG_JP"
 
 
 
 config_setup = {
     "data": dataset,
     "expt": "default",
-    "model": "gnn",
+    "model": "a2gnn",
 }
 
 update_config = {
     "expt": {
         "source": source,
         "target": target,
-        "device": "cuda:0",
+        "device": "cuda:5",
         "seed": 42,
     }}
 

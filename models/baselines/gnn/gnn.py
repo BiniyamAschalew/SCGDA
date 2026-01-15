@@ -6,9 +6,6 @@ from torch_geometric.loader import NeighborLoader
 from models.base_model import BaseGDA
 from models.baselines.gnn.gnn_base import GNNBase
 
-from utils.expt_utils import WandbHandler
-from utils.train_utils.metrics import BaseMetric
-
 
 class GNN(BaseGDA):
 
@@ -29,12 +26,9 @@ class GNN(BaseGDA):
         self.gamma = config["model"]["gamma"]
 
         self.gnn = None
-        self.metrics = BaseMetric(config)
-
 
     def init_model(self, **kwargs):
 
-        self.wandb = WandbHandler(self.config)
         model =  GNNBase(self.config).to(self.device)
         return model
 
@@ -86,22 +80,14 @@ class GNN(BaseGDA):
             epoch_source_preds = epoch_source_logits.argmax(dim=1)
             train_results = self.metrics(epoch_source_logits, epoch_source_labels)
 
-            if self.verbose >= 1:
-                print(f"Epoch {epoch+1:03d}, Loss: {epoch_loss:.4f}")
-                print(f"train results: {train_results}")
-
+            self.log(epoch, epoch_loss, train_results)
             early_stop = self.early_stop_check(self.gnn, result=train_results, epoch=epoch)
-
-            self.wandb.log({
-                "Train Loss": epoch_loss,
-                "Train metrics": train_results,
-                # "Val metrics": val_results
-            })
 
             if early_stop == "stop":
                 break
             elif early_stop == "save":
                 torch.save(self.gnn.state_dict(), self.best_model_dir)
+
 
         # after training, load the best model
         self.gnn.load_state_dict(torch.load(self.best_model_dir))

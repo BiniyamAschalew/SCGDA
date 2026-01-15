@@ -10,6 +10,9 @@ from utils.train_utils.metrics import BaseMetric
 
 def run(config: dict):
 
+    # print("\n=== Experiment Configuration ===")
+    # print(f"Dataset: {config['data']['name']}, epochs: {config['expt']['epochs']}, model: {config['model']['name']}")
+
     device = config["expt"]["device"]
     os.environ.setdefault("PYTORCH_CUDA_ALLOC_CONF", "max_split_size_mb:128")
 
@@ -44,5 +47,7 @@ def run(config: dict):
     result["model"] = config["model"]["name"]
     result["seed"] = config["expt"]["seed"]
     result["train_time"] = end_time - start_time
+
+    # print(f"\n=== Result ===\n{result}\n")
 
     return result
