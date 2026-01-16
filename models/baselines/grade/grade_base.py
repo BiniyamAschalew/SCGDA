@@ -1,7 +1,7 @@
 import torch
 from torch import nn
 import torch.nn.functional as F
-from models.layers.build_layer import build_layer, build_activation
+from models.__layers.build_layer import build_layer, build_activation
 
 from torch_geometric.nn import GCNConv
 from torch_geometric.nn import global_mean_pool

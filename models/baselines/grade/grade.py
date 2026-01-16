@@ -10,7 +10,7 @@ from torch_geometric.loader import NeighborLoader, DataLoader
 
 from models.base_model import BaseGDA
 from models.baselines.grade.grade_base import GRADEBase
-from models.layers.reverse_layer import GradReverse
+from models.__layers.reverse_layer import GradReverse
 from utils.train_utils.mmd import MMD
 
 

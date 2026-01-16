@@ -12,7 +12,7 @@ from torch_geometric.utils import is_undirected, to_undirected
 
 from models.base_model import BaseGDA
 from models.baselines.gnn.gnn_base import GNNBase
-from models.layers.reverse_layer import GradReverse
+from models.__layers.reverse_layer import GradReverse
 
 
 

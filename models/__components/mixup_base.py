@@ -3,7 +3,7 @@ from torch import nn
 import torch.nn.functional as F
 import copy
 
-from models.layers.mixup_gcnconv import MixUpGCNConv
+from models.__layers.mixup_gcnconv import MixUpGCNConv
 from torch.nn import Linear
 
 

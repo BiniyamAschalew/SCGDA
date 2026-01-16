@@ -18,8 +18,8 @@ from torch_geometric.utils import to_dense_adj
 # from ..metrics import eval_macro_f1, eval_micro_f1
 
 from models.base_model import BaseGDA
-from models.components.mixup_base import MixupBase
-from models.components.reweight_gnn import ReweightGNN
+from models.__components.mixup_base import MixupBase
+from models.__components.reweight_gnn import ReweightGNN
 from utils.train_utils.mmd import MMD
 
 

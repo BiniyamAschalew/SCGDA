@@ -6,12 +6,14 @@ from utils.expt_utils import to_valid_dir
 from run import run
 import pandas as pd
 
-
 SEED = 0
 EPOCHS = 200
 DEVICE = "cuda:7"
 REPEATS = 3
 
+BASELINES = {"gnn", "dane", "simgda", 
+             "grade", "a2gnn", "strurw", 
+             "dgsda", "specreg"}
 MODELS = {
     0:"gnn", 1: "dane", 
     2:"simgda", 3:"grade", 
@@ -37,6 +39,12 @@ for repeat in range(REPEATS):
         for did in id["dataset"]:
 
             model = MODELS[mid]
+            # accounding for the directory structure
+            if model in BASELINES:
+                model = "baselines/" + model
+            else:
+                model = "ours/" + model
+
             dataset = DATASETS[did]
 
             data_config = load_config(f"./configs/data_configs/{dataset}.yaml")

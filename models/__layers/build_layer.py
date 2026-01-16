@@ -1,6 +1,6 @@
 import torch
 from torch_geometric.nn import GCNConv, SAGEConv, GATConv, GINConv
-from models.layers.prop_gcn_conv import PropGCNConv
+from models.__layers.prop_gcn_conv import PropGCNConv
 
 def build_layer(in_dim, out_dim, layer_type):
     layer_type = layer_type.lower()
