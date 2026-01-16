@@ -9,6 +9,7 @@ from data.data_loaders.citation import CitationDataset
 from data.data_loaders.twitch import TwitchDataset
 from data.data_loaders.mag import MAGDataset
 
+from utils.data_utils.svd_transform import svd_transform
 
 def get_dataset(domain: str, config: dict):
     """load the dataset for the specific domain"""
@@ -25,21 +26,25 @@ def get_dataset(domain: str, config: dict):
 
     # convert to correct case
     domain = domain_name[domain]
+    pre_transform = None
+
+    if config["model"]["name"].lower() == "specreg":
+        pre_transform = svd_transform
     
     if domain in {"BRAZIL", "EUROPE", "USA"}:
-        dataset = AirportDataset(domain, config)
+        dataset = AirportDataset(domain, config, pre_transform=pre_transform)
 
     elif domain in {"Blog1", "Blog2"}:
-        dataset = BlogDataset(domain, config)
+        dataset = BlogDataset(domain, config, pre_transform=pre_transform)
 
     elif domain in {"ACMv9", "Citationv1", "DBLPv7"}:
-        dataset = CitationDataset(domain, config)
+        dataset = CitationDataset(domain, config, pre_transform=pre_transform)
 
     elif domain in {"DE", "EN", "ES", "FR", "PT", "RU"}:
-        dataset = TwitchDataset(domain, config)
+        dataset = TwitchDataset(domain, config, pre_transform=pre_transform)
 
     elif domain in {"MAG_CN", "MAG_DE", "MAG_FR", "MAG_RU", "MAG_JP", "MAG_US"}:
-        dataset = MAGDataset(domain, config)
+        dataset = MAGDataset(domain, config, pre_transform=pre_transform)
 
     else:
         raise ValueError(f"Invalid domain {domain}")

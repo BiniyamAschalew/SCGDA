@@ -7,14 +7,18 @@ num_layers: 2
 hid_dim: 64
 dropout_ratio: 0.1 # in the original code it was 0.1, tried with 0.5
 
-filename: "gnn_test.txt"
+# filename: "gnn_test.txt"
 activation: "relu"
 mode: "node"
 
 s_pnums: 0
 t_pnums: 30
+
+
 adv: False
-weight: 10
+# alignment weight (isn't 10 too much?)
+# weight: 10
+weight: 0.1
 
 # trainer:
 loss: "GNN_Loss"
@@ -27,7 +31,4 @@ optimizer: "Adam"
 lr: 0.01 # in the pygda implementation it was 0.004 (performance micro inc macro dec)
 weight_decay: 0.005
 
-# scheduler: "StepLR"
-# step_size: 10
-# gamma: 0.1
 

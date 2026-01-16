@@ -65,7 +65,6 @@ class A2GNN(BaseGDA):
             mmd_loss = MMD(source_features, target_features)
             loss = loss + mmd_loss * self.weight
 
-
         return loss, source_logits, target_logits
 
     def fit(self, source_data, target_data):

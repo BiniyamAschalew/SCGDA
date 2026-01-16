@@ -1,5 +1,6 @@
 import random
 from datetime import datetime
+import os
 from copy import deepcopy
 
 import numpy as np
@@ -23,10 +24,23 @@ def set_seed(seed: int):
 
 def print_string(string):
     ascii_art = pyfiglet.figlet_format(string)
-    print(string)
+    print(ascii_art)
 
+def to_valid_dir(result_dir: str):
+    base, ext = os.path.splitext(result_dir)
+    new_dir = None
 
+    counter = 1
+    while True:
 
+        new_dir = f"{base}_{counter}{ext}"
+        if not os.path.exists(new_dir):
+            break
+
+        counter += 1
+    return new_dir
+
+    
 class WandbHandler:
     """logging to wandb if it is enabled"""
 

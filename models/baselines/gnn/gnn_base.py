@@ -39,22 +39,23 @@ class GNNBase(nn.Module):
             
     def forward(self, x, edge_index, edge_weight=None, batch=None):
 
-        x = self.feat_bottleneck(x, edge_index, edge_weight)
-        if self.mode == 'graph':
-            x = global_mean_pool(x, batch)
+        x = self.feat_bottleneck(x, edge_index, edge_weight, batch)
         x = self.feat_classifier(x, edge_index, edge_weight) 
 
         x = F.log_softmax(x, dim=1)
 
         return x
     
-    def feat_bottleneck(self, x, edge_index, edge_weight=None):
+    def feat_bottleneck(self, x, edge_index, edge_weight=None, batch=None):
 
         for i, conv in enumerate(self.convs):
             x = conv(x, edge_index, edge_weight)
             if i < len(self.convs) - 1:
                 x = self.act(x)
                 x = F.dropout(x, p=self.dropout, training=self.training)
+
+        if self.mode == 'graph':
+            x = global_mean_pool(x, batch)
 
         return x
     

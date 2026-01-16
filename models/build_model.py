@@ -1,6 +1,11 @@
 from models.baselines.gnn.gnn import GNN 
-# from models.baselines.dane.dane import DANE
+from models.baselines.dane.dane import DANE
+from models.baselines.simgda.simgda import SimGDA
 from models.baselines.a2gnn.a2gnn import A2GNN
+from models.baselines.grade.grade import GRADE
+from models.baselines.strurw.strurw import StruRW
+from models.baselines.dgsda.dgsda import DGSDA
+from models.baselines.specreg.specreg import SpecReg
 
 from utils.expt_utils import print_string
 
@@ -12,11 +17,26 @@ def build_model(config: dict):
     if model_name.lower() == "gnn":
         model = GNN(config)
 
-    # elif model_name.lower() == "dane":
-    #     model = DANE(config)
+    elif model_name.lower() == "dane":
+        model = DANE(config)
+
+    elif model_name.lower() == "simgda":
+        model = SimGDA(config)
+
+    elif model_name.lower() == "grade":
+        model = GRADE(config)
 
     elif model_name.lower() == "a2gnn":
         model = A2GNN(config)
+
+    elif model_name.lower() == "strurw":
+        model = StruRW(config)
+
+    elif model_name.lower() == "dgsda":
+        model = DGSDA(config)
+
+    elif model_name.lower() == "specreg":
+        model = SpecReg(config)
 
     else:
         raise ValueError(f"Invalid model name {model_name}")

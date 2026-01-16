@@ -1,8 +1,14 @@
-# Custom
+### modified: Custom ignore inputs
+
 __external__/
 __design__/
 # any folder with the form __*__ is ignored
 __*__/
+
+*.csv
+*.yaml
+*.yml
+###
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
