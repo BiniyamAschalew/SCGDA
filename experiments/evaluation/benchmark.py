@@ -6,76 +6,109 @@ from utils.expt_utils import to_valid_dir
 from run import run
 import pandas as pd
 
-
-
-
 SEED = 0
 EPOCHS = 200
 DEVICE = "cuda:7"
-MODELS = ["gnn", "dane", "simgda", "a2gnn"]
-DATASETS = ["citation", "blog", "airport", "twitch", "mag"]
 
+BASELINES = {"gnn", "dane", "simgda", 
+             "grade", "a2gnn", "strurw", 
+             "dgsda", "specreg"}
+MODELS = {
+    0:"gnn",   1: "dane", 
+    2:"simgda",   3:"grade", 
+    4:"a2gnn",   5:"strurw", 
+    6:"dgsda",   7:"specreg",
+    8:"simgda_role",
+    }
+
+
+DATASETS = {0:"citation", 1:"blog", 
+            2:"airport", 3:"twitch", 4:"mag"}
+
+REPEATS = 2
 id = {
-    "model": [3],
+    "model": [8, 0, 2],
     "dataset": [0],
-    "source": [0],
-    "target": [1],
+    "source": [1, 2],
+    "target": [1, 0, 2],
 }
-notes = "a2gnn_adv_test"
+notes = "process_datasets"
 
 combined_df = pd.DataFrame()
 cur_time = time.strftime("%d%H%M")
 
-for mid in id["model"]:
-    for did in id["dataset"]:
-        for sid in id["source"]:
-            for tid in id["target"]:
-                
-                # exclude same source and target
-                if sid == tid:
-                    continue
+for repeat in range(REPEATS):
+    for mid in id["model"]:
+        for did in id["dataset"]:
 
+            model = MODELS[mid]
+            # accounding for the directory structure
+            if model in BASELINES:
+                model = "baselines/" + model
+            else:
+                model = "ours/" + model
 
-                model = MODELS[mid]
-                dataset = DATASETS[did]
+            dataset = DATASETS[did]
 
-                data_config = load_config(f"./configs/data_configs/{dataset}.yaml")
-                domains = data_config["domains"]
+            data_config = load_config(f"./configs/data_configs/{dataset}.yaml")
+            domains = data_config["domains"]
 
-                if len(domains) <= max(sid, tid):
-                    raise ValueError(f"selected domain id {sid} or {tid} exceeds available domains: len={len(domains)}")
+            src_ids = range(len(domains)) if len(id["source"]) == 0 else id["source"]
+            tgt_ids = range(len(domains)) if len(id["target"]) == 0 else id["target"]
 
-                source = domains[sid]
-                target = domains[tid]
-
-                config_setup = {
-                    "data": dataset,
-                    "expt": "default",
-                    "model": model,
-                }
-
-                update_config = {
-                    "expt": 
-                    {
-                        "source": source,
-                        "target": target,
-                        "device": DEVICE,
-                        "seed": SEED,
-                        "epochs": EPOCHS,
-                    },
-                    "model":
-                    {
-                        "adv": False,
-                    },
+            for sid in src_ids:
+                for tid in tgt_ids:
                     
-                }
+                    # exclude same source and target
+                    if sid == tid:
+                        continue
 
-                config = build_config(config_setup, update_config)
-                result = run(config)
+                    if len(domains) <= max(sid, tid):
+                        raise ValueError(f"selected domain id {sid} or {tid} exceeds available domains: len={len(domains)}")
 
-                result_df = pd.DataFrame([result])
-                combined_df = pd.concat([combined_df, result_df], 
-                                        ignore_index=True)
+                    source = domains[sid]
+                    target = domains[tid]
+
+                    config_setup = {
+                        "data": dataset,
+                        "expt": "default",
+                        "model": model,
+                    }
+
+                    update_config = {
+                        "expt": 
+                        {
+                            "source": source,
+                            "target": target,
+                            "device": DEVICE,
+                            "seed": SEED,
+                            "epochs": EPOCHS,
+                        },
+                        "model":
+                        {
+                            "adv": False,
+                        },
+                        
+                    }
+
+                    config = build_config(config_setup, update_config)
+                    result = run(config)
+
+                    result["repeat"] = repeat
+                    result["source"] = source
+                    result["target"] = target
+                    result["cur_time"] = time.strftime("%d%H%M")
+
+                    model_name = model[:]
+                    if "role" in model_name:
+                        model_name += f"_{config['model']['role_type']}"
+
+                    result["model"] = model_name
+
+
+                    result_df = pd.DataFrame([result])
+                    combined_df = pd.concat([combined_df, result_df], 
+                                            ignore_index=True)
 
 
 
@@ -83,6 +116,6 @@ result_dir = f"./__saved__/results/evaluation/{cur_time}_{notes}.csv"
 if os.path.exists(result_dir):
     result_dir = to_valid_dir(result_dir)
 
-result_df.to_csv(result_dir, index=False)
+combined_df.to_csv(result_dir, index=False)
 print(result)
 print(f"Combined results saved to {result_dir}")

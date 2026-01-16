@@ -32,11 +32,17 @@ class SimGDARole(BaseGDA):
         self.simgda = None
 
         self.role_builder = build_role(config)
+        self.role_weight = config["model"]["role_weight"]
 
     def init_model(self, **kwargs):
 
         model =  GNNBase(self.config).to(self.device)
         return model
+
+    def _create_role(self, source_data, target_data):
+        source_role, target_role = self.role_builder.build(source_data, target_data)
+        source_data.role = source_role.contiguous()
+        target_data.role = target_role.contiguous()
 
     
     def forward_model(self, source_data, target_data):
@@ -51,9 +57,16 @@ class SimGDARole(BaseGDA):
         target_logits = F.log_softmax(target_logits, dim=1)
 
         loss = F.nll_loss(source_logits, source_data.y)
-        mmd_loss = MMD(source_features, target_features).to(self.device)
-        loss += self.mmd_weight * mmd_loss
 
+        self._create_role(source_data, target_data)
+        source_role = source_data.role.to(self.device) * self.role_weight
+        target_role = target_data.role.to(self.device) * self.role_weight
+
+        source_concat = torch.cat([source_features, source_role], dim=1)
+        target_concat = torch.cat([target_features, target_role], dim=1)
+
+        mmd_loss = MMD(source_concat, target_concat) #, kernel_type='rbf')
+        loss += self.mmd_weight * mmd_loss
 
         return loss, source_logits, target_logits
 

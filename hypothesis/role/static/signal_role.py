@@ -12,12 +12,11 @@ class SignalRole:
     GCN-style propagation.
     """
 
-    def __init__(self, steps: int = 8, operator: str = "sym_norm"):
+    def __init__(self, config: dict):
         
-        self.steps = max(1, steps)
-        self.operator = operator
-        self.conv = LGConv(normalize=(operator == "sym_norm"))
-    
+        self.steps = max(1, config["model"]["role_dim"])
+        self.operator = config["model"]["role_operator"].lower()
+        self.conv = LGConv(normalize=(self.operator == "sym"))
 
 
     def _encode(self, data: Data) -> torch.Tensor:
@@ -48,7 +47,7 @@ class SignalRole:
             edge_weight = deg_inv[row]
         
         # Initialize uniform signal
-        signal = torch.ones(num_nodes, 1, dtype=torch.float32)
+        signal = torch.ones(num_nodes, 1, dtype=torch.float32, device=edge_index.device)
         trajectory = []
 
         # Propagate signal K times, collecting the trajectory

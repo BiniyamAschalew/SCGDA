@@ -7,6 +7,8 @@ from models.baselines.strurw.strurw import StruRW
 from models.baselines.dgsda.dgsda import DGSDA
 from models.baselines.specreg.specreg import SpecReg
 
+from models.ours.simgda_role.simgda_role import SimGDARole
+
 from utils.expt_utils import print_string
 
 def build_model(config: dict):
@@ -37,6 +39,9 @@ def build_model(config: dict):
 
     elif model_name.lower() == "specreg":
         model = SpecReg(config)
+
+    elif model_name.lower() == "simgda_role":
+        model = SimGDARole(config)
 
     else:
         raise ValueError(f"Invalid model name {model_name}")
