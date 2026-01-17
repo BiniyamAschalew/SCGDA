@@ -25,10 +25,11 @@ class GraphWave:
 
     def __init__(
         self,
-        scales: Sequence[float] | None = None,
-        time_points: Sequence[float] | None = None,
-        order: int = 30,
-        normalize: bool = True,
+        # scales: Sequence[float] | None = None,
+        # time_points: Sequence[float] | None = None,
+        # order: int = 30,
+        # normalize: bool = True,
+        config: dict,
     ):
         """
         Args:
@@ -38,6 +39,12 @@ class GraphWave:
             order: Order of Chebyshev polynomial approximation. Default: 30
             normalize: Whether to z-normalize the output features.
         """
+
+        scales = config["model"].get("graphwave_scales", None)
+        time_points = config["model"].get("graphwave_time_points", None)
+        order = config["model"].get("graphwave_chebyshev_order", 30)
+        normalize = config["model"].get("graphwave_normalize", True)
+        
         self.scales = list(scales) if scales is not None else [1.0, 10.0, 25.0, 50.0]
         if time_points is not None:
             self.time_points = torch.tensor(time_points, dtype=torch.float32)
@@ -138,6 +145,7 @@ class GraphWave:
         
         # Convert to dense (needed for Chebyshev polynomial computation)
         laplacian = torch.zeros(num_nodes, num_nodes)
+        laplacian = laplacian.to(data.edge_index.device)
         laplacian[edge_index[0], edge_index[1]] = edge_weight
         
         # Compute characteristic function for each scale

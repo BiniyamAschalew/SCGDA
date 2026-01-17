@@ -22,12 +22,17 @@ MODELS = {
     }
 
 
-DATASETS = {0:"citation", 1:"blog", 
-            2:"airport", 3:"twitch", 4:"mag"}
+DATASETS = {
+    0:"citation", 1:"blog", 
+    2:"airport", 3:"twitch", 4:"mag"
+    }
 
 REPEATS = 2
 
-ROLE_TYPES = ["random_role", "graphwave", "signal_role"]
+ROLE_TYPES = {
+    0:"random_role", 1:"graphwave", 
+    2:"signal_role"
+    }
 
 
 role_type = ROLE_TYPES[1]
@@ -46,7 +51,7 @@ for repeat in range(REPEATS):
     for mid in id["model"]:
         for did in id["dataset"]:
 
-            model = MODELS[mid]
+            model = MODELS[mid][:]
             # accounding for the directory structure
             if model in BASELINES:
                 model = "baselines/" + model

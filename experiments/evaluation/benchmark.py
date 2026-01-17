@@ -22,17 +22,27 @@ MODELS = {
     }
 
 
-DATASETS = {0:"citation", 1:"blog", 
-            2:"airport", 3:"twitch", 4:"mag"}
+DATASETS = {
+    0:"citation", 1:"blog", 
+    2:"airport", 3:"twitch", 4:"mag"
+    }
 
 REPEATS = 2
+
+ROLE_TYPES = {
+    0:"random_role", 1:"graphwave", 
+    2:"signal_role"
+    }
+
+
+role_type = ROLE_TYPES[1]
 id = {
-    "model": [8, 0, 2],
+    "model": [8],
     "dataset": [0],
     "source": [1, 2],
     "target": [1, 0, 2],
 }
-notes = "process_datasets"
+notes = "compare_role_types"
 
 combined_df = pd.DataFrame()
 cur_time = time.strftime("%d%H%M")
@@ -41,7 +51,7 @@ for repeat in range(REPEATS):
     for mid in id["model"]:
         for did in id["dataset"]:
 
-            model = MODELS[mid]
+            model = MODELS[mid][:]
             # accounding for the directory structure
             if model in BASELINES:
                 model = "baselines/" + model
@@ -87,6 +97,7 @@ for repeat in range(REPEATS):
                         "model":
                         {
                             "adv": False,
+                            "role_type": role_type,
                         },
                         
                     }
