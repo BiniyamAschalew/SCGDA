@@ -64,7 +64,8 @@ def parse_pairs(raw: str) -> list:
         pairs.append((src, tgt))
     return pairs
 
-
+ 
+ 
 def write_csv(path: Path, rows: list):
     if not rows:
         return
