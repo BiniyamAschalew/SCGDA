@@ -1,7 +1,13 @@
 import time
-import os
 
+import os
+os.environ["OMP_NUM_THREADS"] = "4"
+os.environ["OPENBLAS_NUM_THREADS"] = "4"
+os.environ["MKL_NUM_THREADS"] = "4"
+os.environ["VECLIB_MAXIMUM_THREADS"] = "4"
+os.environ["NUMEXPR_NUM_THREADS"] = "4"
 import torch
+torch.set_num_threads(4)
 
 from data.build_dataset import build_dataset
 from models.build_model import build_model

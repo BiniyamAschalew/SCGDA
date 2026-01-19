@@ -1,3 +1,15 @@
+import os
+
+os.environ["OMP_NUM_THREADS"] = "4"
+os.environ["OPENBLAS_NUM_THREADS"] = "4"
+os.environ["MKL_NUM_THREADS"] = "4"
+os.environ["VECLIB_MAXIMUM_THREADS"] = "4"
+os.environ["NUMEXPR_NUM_THREADS"] = "4"
+import torch
+torch.set_num_threads(4)
+# torch.set_num_interop_threads(2
+
+
 import argparse
 import csv
 import gc
@@ -63,9 +75,8 @@ def parse_pairs(raw: str) -> list:
             )
         pairs.append((src, tgt))
     return pairs
+ 
 
- 
- 
 def write_csv(path: Path, rows: list):
     if not rows:
         return
@@ -165,7 +176,7 @@ def tune_for_pair(
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--model", required=True, help="Model name (e.g., gnn)")
+    parser.add_argument("--model", default="gnn", help="Model name (e.g., gnn)")
     parser.add_argument("--expt", default="default", help="Experiment config name")
     parser.add_argument(
         "--datasets",
@@ -192,6 +203,7 @@ def main():
     parser.add_argument("--write-default", action="store_true")
     parser.add_argument("--space-dir", default="hps/space")
     parser.add_argument("--config-dir", default="configs")
+
 
     args = parser.parse_args()
 

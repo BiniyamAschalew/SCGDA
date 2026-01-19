@@ -37,10 +37,10 @@ ROLE_TYPES = {
 
 role_type = ROLE_TYPES[1]
 id = {
-    "model": [8],
-    "dataset": [0],
-    "source": [1, 2],
-    "target": [1, 0, 2],
+    "model": [0],
+    "dataset": [4],
+    "source": [0],
+    "target": [1],
 }
 notes = "compare_role_types"
 
