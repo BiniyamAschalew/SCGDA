@@ -1,18 +1,9 @@
-import os
-
-os.environ["OMP_NUM_THREADS"] = "4"
-os.environ["OPENBLAS_NUM_THREADS"] = "4"
-os.environ["MKL_NUM_THREADS"] = "4"
-os.environ["VECLIB_MAXIMUM_THREADS"] = "4"
-os.environ["NUMEXPR_NUM_THREADS"] = "4"
-import torch
-torch.set_num_threads(4)
-# torch.set_num_interop_threads(2
-
-
 import argparse
 import csv
 import gc
+from tqdm import tqdm
+
+import math
 import time
 from itertools import product
 from pathlib import Path
@@ -75,7 +66,7 @@ def parse_pairs(raw: str) -> list:
             )
         pairs.append((src, tgt))
     return pairs
- 
+
 
 def write_csv(path: Path, rows: list):
     if not rows:
@@ -102,7 +93,7 @@ def tune_for_pair(
     metric: str,
     out_dir: Path,
     max_combos: int,
-    write_default: bool,
+    write_best: bool,
 ):
     rows = []
     summary = []
@@ -115,22 +106,30 @@ def tune_for_pair(
             break
 
         scores = []
+        num_oom = 0
         for seed in seeds:
             cfg = OmegaConf.merge(
                 base_config,
                 {"model": params, "expt": {"seed": seed}},
             )
             result = run(OmegaConf.to_container(cfg, resolve=True))
-            if metric not in result:
-                raise KeyError(f"Metric '{metric}' not found in run result.")
-
-            score = float(result[metric])
-            scores.append(score)
 
             row = dict(result)
             row.update(params)
             row["config_id"] = config_id
             rows.append(row)
+
+            if result.get("status") == "oom":
+                num_oom += 1
+                continue
+
+            if metric not in result:
+                raise KeyError(f"Metric '{metric}' not found in run result.")
+
+            score = float(result[metric])
+            if math.isnan(score):
+                continue
+            scores.append(score)
 
             try:
                 gc.collect()
@@ -139,17 +138,23 @@ def tune_for_pair(
             except Exception:
                 pass
 
-        avg_score = sum(scores) / len(scores)
+        if scores:
+            avg_score = sum(scores) / len(scores)
+        else:
+            avg_score = float("nan")
         summary.append(
             {
                 "config_id": config_id,
                 "avg_score": avg_score,
                 "metric": metric,
+                "num_success": len(scores),
+                "num_oom": num_oom,
+                "status": "ok" if scores else "oom",
                 **params,
             }
         )
 
-        if best_score is None or avg_score > best_score:
+        if scores and (best_score is None or avg_score > best_score):
             best_score = avg_score
             best_params = params
 
@@ -162,7 +167,7 @@ def tune_for_pair(
     best_model_config = OmegaConf.merge(base_config.model, best_params)
     OmegaConf.save(best_model_config, out_dir / "best.yaml")
 
-    if write_default:
+    if write_best:
         OmegaConf.save(best_model_config, out_dir / "default.yaml")
 
     summary_payload = {
@@ -176,7 +181,7 @@ def tune_for_pair(
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--model", default="gnn", help="Model name (e.g., gnn)")
+    parser.add_argument("-m", "--model", required=True, help="Model name (e.g., gnn)")
     parser.add_argument("--expt", default="default", help="Experiment config name")
     parser.add_argument(
         "--datasets",
@@ -190,24 +195,23 @@ def main():
     )
     parser.add_argument("--metric", default="micro_f1")
     parser.add_argument("--seed", type=int, default=0)
-    parser.add_argument("--repeat", type=int, default=3)
+    parser.add_argument("-r", "--repeat", type=int, default=3)
     parser.add_argument("--device", default="")
     parser.add_argument(
+        "-e",
         "--epochs",
         type=int,
-        default=None,
+        default=200,
         help="Override epochs (omit to use config)",
     )
-    parser.add_argument("--verbose", type=int, default=0)
+    parser.add_argument("-v", "--verbose", type=int, default=0)
     parser.add_argument("--max-combos", type=int, default=0)
-    parser.add_argument("--write-default", action="store_true")
+    parser.add_argument("-w", "--write-best", action="store_true")
     parser.add_argument("--space-dir", default="hps/space")
     parser.add_argument("--config-dir", default="configs")
 
-
     args = parser.parse_args()
 
-    model_space = load_space(Path(args.space_dir), args.model)
     seeds = [args.seed + i for i in range(args.repeat)]
 
     if args.datasets:
@@ -217,7 +221,8 @@ def main():
 
     pair_filter = parse_pairs(args.pairs)
 
-    for dataset in datasets:
+    for dataset in tqdm(datasets, desc="Datasets"):
+        model_space = load_space(Path(args.space_dir), dataset)
         base_config = OmegaConf.create(
             build_config({"data": dataset, "model": args.model, "expt": args.expt})
         )
@@ -260,7 +265,7 @@ def main():
                 args.metric,
                 out_dir,
                 args.max_combos,
-                args.write_default,
+                args.write_best,
             )
             elapsed = time.time() - start
             print(f"== Done in {elapsed:.1f}s, results saved to {out_dir} ==")

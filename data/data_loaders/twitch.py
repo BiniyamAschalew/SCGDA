@@ -24,9 +24,10 @@ class TwitchDataset(BaseDataset):
         transform=None,
         pre_transform=None,
         pre_filter=None,
+        force_reload=None,
     ):
         super(TwitchDataset, self).__init__(
-            name, config, transform, pre_transform, pre_filter
+            name, config, transform, pre_transform, pre_filter, force_reload=force_reload
         )
 
 

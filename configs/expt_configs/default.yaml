@@ -10,7 +10,7 @@ tuned_config_path: "./hps/tuned"
 
 
 ### training
-epochs: 2
+epochs: 200
 
 ### early stopping
 early_stopping: False

@@ -18,14 +18,17 @@ class BaseDataset(InMemoryDataset):
         transform=None,
         pre_transform=None,
         pre_filter=None,
+        force_reload=None,
     ):
 
         self.name = name
         self.config = config
         self.root = osp.join(config["data"]["root"], name)
 
+        force_reload = pre_transform is not None
+
         super(BaseDataset, self).__init__(
-            self.root, transform, pre_transform, pre_filter
+            self.root, transform, pre_transform, pre_filter, force_reload=force_reload
         )
 
     @property

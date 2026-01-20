@@ -22,9 +22,10 @@ class AirportDataset(BaseDataset):
         transform=None,
         pre_transform=None,
         pre_filter=None,
+        force_reload=None,
     ):
         super(AirportDataset, self).__init__(
-            name, config, transform, pre_transform, pre_filter
+            name, config, transform, pre_transform, pre_filter, force_reload=force_reload
         )
 
         self.data, self.slices = torch.load(self.processed_paths[0])

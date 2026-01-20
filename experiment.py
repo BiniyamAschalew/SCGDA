@@ -9,6 +9,7 @@ import pandas as pd
 SEED = 0
 EPOCHS = 200
 DEVICE = "cuda:7"
+USE_TUNED = False
 
 BASELINES = {"gnn", "dane", "simgda", 
              "grade", "a2gnn", "strurw", 
@@ -27,7 +28,7 @@ DATASETS = {
     2:"airport", 3:"twitch", 4:"mag"
     }
 
-REPEATS = 2
+REPEATS = 1
 
 ROLE_TYPES = {
     0:"random_role", 1:"graphwave", 
@@ -37,26 +38,21 @@ ROLE_TYPES = {
 
 role_type = ROLE_TYPES[1]
 id = {
-    "model": [0],
-    "dataset": [4],
+    "model": [4],
+    "dataset": [0],
     "source": [0],
     "target": [1],
 }
 notes = "compare_role_types"
 
 combined_df = pd.DataFrame()
-cur_time = time.strftime("%d%H%M")
+cur_time = time.strftime("%d%H%M%S")
 
 for repeat in range(REPEATS):
     for mid in id["model"]:
         for did in id["dataset"]:
 
             model = MODELS[mid][:]
-            # accounding for the directory structure
-            if model in BASELINES:
-                model = "baselines/" + model
-            else:
-                model = "ours/" + model
 
             dataset = DATASETS[did]
 
@@ -102,7 +98,7 @@ for repeat in range(REPEATS):
                         
                     }
 
-                    config = build_config(config_setup, update_config)
+                    config = build_config(config_setup, update_config, use_tuned=USE_TUNED)
                     result = run(config)
 
                     result["repeat"] = repeat

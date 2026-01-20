@@ -1,5 +1,0 @@
-model:
-  lr: [0.0001, 0.0005, 0.001, 0.005, 0.01] # Learning rate
-  weight_decay: [0.001, 0.005, 0.01]  # Weight decay (L2 regularization) 
-  num_layers: [2, 3, 4] # Number of GNN layers
-  dropout_ratio: [0.1, 0.3, 0.5] # Dropout ratio
