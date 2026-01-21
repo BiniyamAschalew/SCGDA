@@ -15,8 +15,8 @@ from utils.config_utils import build_config
 from run import run
 
 
-def load_space(space_dir: Path, model_name: str) -> dict:
-    path = space_dir / f"{model_name.lower()}.yaml"
+def load_space(space_dir: Path, file_name: str) -> dict:
+    path = space_dir / f"{file_name.lower()}.yaml"
     if not path.exists():
         raise FileNotFoundError(f"HP space file not found: {path}")
 
@@ -102,6 +102,9 @@ def tune_for_pair(
     best_params = None
 
     for config_id, params in enumerate(grid_from_space(model_space)):
+
+        if base_config.expt.verbose > 0:
+            print(f"Testing config {config_id}: {params}")
         if max_combos and config_id >= max_combos:
             break
 
@@ -113,6 +116,8 @@ def tune_for_pair(
                 {"model": params, "expt": {"seed": seed}},
             )
             result = run(OmegaConf.to_container(cfg, resolve=True))
+            if base_config.expt.verbose > 0:
+                print(f"  Seed {seed} result: {result}")
 
             row = dict(result)
             row.update(params)
@@ -245,7 +250,7 @@ def main():
 
         tuned_root = Path(base_config.expt.tuned_config_path)
 
-        for source, target in all_pairs:
+        for source, target in tqdm(all_pairs, desc="Domain Pairs", leave=False):
             pair_config = OmegaConf.merge(
                 base_config,
                 {"expt": {"source": source, "target": target}},

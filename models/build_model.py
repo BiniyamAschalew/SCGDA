@@ -9,6 +9,7 @@ from models.baselines.specreg.specreg import SpecReg
 
 from models.ours.simgda_role.simgda_role import SimGDARole
 from models.ours.simgda_spectral.simgda_spectral import SimGDASpectral
+from models.ours.structalign2.structalign2 import StructAlign2
 
 from utils.expt_utils import print_string
 
@@ -46,6 +47,9 @@ def build_model(config: dict):
 
     elif model_name.lower() == "simgda_spectral":
         model = SimGDASpectral(config)
+
+    elif model_name.lower() == "structalign2":
+        model = StructAlign2(config)
 
     else:
         raise ValueError(f"Invalid model name {model_name}")

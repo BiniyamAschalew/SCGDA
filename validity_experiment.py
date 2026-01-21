@@ -6,6 +6,8 @@ from utils.expt_utils import to_valid_dir
 from run import run
 import pandas as pd
 
+import pygda
+
 SEED = 0
 EPOCHS = 200
 DEVICE = "cuda:7"
@@ -100,7 +102,7 @@ for repeat in range(REPEATS):
                     }
 
                     config = build_config(config_setup, update_config, use_tuned=USE_TUNED)
-                    result = run(config)
+                    result = run(config, from_pygda=True)
 
                     result["repeat"] = repeat
                     result["source"] = source

@@ -18,7 +18,7 @@ MODELS = {
     2:"simgda",   3:"grade", 
     4:"a2gnn",   5:"strurw", 
     6:"dgsda",   7:"specreg",
-    8:"simgda_role",
+    8:"simgda_role", 9:"structalign2",
     }
 
 

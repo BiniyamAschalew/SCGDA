@@ -12,6 +12,7 @@ torch.set_num_threads(4)
 
 from data.build_dataset import build_dataset
 from models.build_model import build_model
+from utils.pygda_utils import build_pygda_model
 from utils.train_utils.metrics import BaseMetric
 
 import warnings
@@ -50,7 +51,7 @@ def _cleanup_cuda():
         pass
 
 
-def run(config: dict):
+def run(config: dict, from_pygda: bool = False) -> dict:
 
     # print("\n=== Experiment Configuration ===")
     # print(f"Dataset: {config['data']['name']}, epochs: {config['expt']['epochs']}, model: {config['model']['name']}")
@@ -81,6 +82,11 @@ def run(config: dict):
         # build and train the model
         stage = "build_model"
         model = build_model(config)
+
+        # if the model is from pygda module
+        if from_pygda:
+            model = build_pygda_model(config)
+
         stage = "fit"
         model.fit(source_data, target_data)
         end_time = time.time()
