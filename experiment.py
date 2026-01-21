@@ -19,7 +19,7 @@ MODELS = {
     2:"simgda",   3:"grade", 
     4:"a2gnn",   5:"strurw", 
     6:"dgsda",   7:"specreg",
-    8:"simgda_role",
+    8:"simgda_role", 9:"simgda_spectral"
     }
 
 
@@ -28,17 +28,17 @@ DATASETS = {
     2:"airport", 3:"twitch", 4:"mag"
     }
 
-REPEATS = 1
 
 ROLE_TYPES = {
     0:"random_role", 1:"graphwave", 
     2:"signal_role"
     }
 
-
+REPEATS = 1
 role_type = ROLE_TYPES[1]
+
 id = {
-    "model": [4],
+    "model": [9],
     "dataset": [0],
     "source": [0],
     "target": [1],

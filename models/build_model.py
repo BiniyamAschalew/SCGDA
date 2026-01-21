@@ -8,6 +8,7 @@ from models.baselines.dgsda.dgsda import DGSDA
 from models.baselines.specreg.specreg import SpecReg
 
 from models.ours.simgda_role.simgda_role import SimGDARole
+from models.ours.simgda_spectral.simgda_spectral import SimGDASpectral
 
 from utils.expt_utils import print_string
 
@@ -42,6 +43,9 @@ def build_model(config: dict):
 
     elif model_name.lower() == "simgda_role":
         model = SimGDARole(config)
+
+    elif model_name.lower() == "simgda_spectral":
+        model = SimGDASpectral(config)
 
     else:
         raise ValueError(f"Invalid model name {model_name}")
