@@ -1,3 +1,8 @@
+""" 
+Experimenting with the exact implementation of the models imported from the pygda module instead of our re-implementation in models/build_model.py
+Purpose: for comparing the results and ensuring correctness of our implementations.
+"""
+
 import time
 import os
 
