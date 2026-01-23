@@ -141,7 +141,8 @@ class SpecReg(BaseGDA):
 
         start_time = time.time()
 
-        for epoch in range(self.epoch):
+        from tqdm import tqdm
+        for epoch in tqdm(range(self.epoch), desc="Training"):
             epoch_loss = 0
             epoch_source_logits = None
             epoch_source_labels = None

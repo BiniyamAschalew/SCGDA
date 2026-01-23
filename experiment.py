@@ -16,7 +16,8 @@ MODELS = {
     4:"a2gnn",   5:"strurw", 
     6:"dgsda",   7:"specreg",
     8:"simgda_role", 9:"simgda_spectral",
-    10:"structalign2", 11:"mlp", 12:"simmlp"
+    10:"structalign2", 11:"mlp", 12:"simmlp",
+    13:"acdne",
     }
 
 
@@ -31,19 +32,19 @@ ROLE_TYPES = {
     2:"signal_role"
     }
 
-REPEATS = 2
+REPEATS = 1
 role_type = ROLE_TYPES[1]
 
 SEED = 0
 EPOCHS = 200
-DEVICE = "cuda:6"
+DEVICE = "cuda:5"
 
-USE_TUNED = 2
+USE_TUNED = 0
 USE_DEFAULT = False
 WANDB = False
 
 id = {
-    "model": [4],
+    "model": [13],
     "dataset": [0],
     "source": [0],
     "target": [1],

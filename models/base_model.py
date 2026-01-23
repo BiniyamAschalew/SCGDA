@@ -26,11 +26,10 @@ class BaseGDA(ABC):
         self.gnn_type = config["model"]["gnn"]
         self.dropout = config["model"]["dropout_ratio"]
         self.weight_decay = config["model"]["weight_decay"]
-
         self.lr = config["model"]["lr"]
         self.batch_size = config["model"]["batch_size"]
 
-        self.epoch = config["expt"]["epochs"]
+        self.epoch = config["model"].get("epochs", 190)
         self.device = config["expt"]["device"]
         self.verbose = config["expt"]["verbose"]
 
