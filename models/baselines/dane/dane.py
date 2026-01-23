@@ -2,6 +2,7 @@ import itertools
 import time
 import copy
 
+import numpy as np
 import torch
 import torch.nn as nn
 
