@@ -37,6 +37,7 @@ class ACDNE(BaseGDA):
         self.pair_weight=config["model"]["pair_weight"]
         self.step=config["model"]["step"]
 
+
     def init_model(self):
         """
         Initialize the ACDNE model.

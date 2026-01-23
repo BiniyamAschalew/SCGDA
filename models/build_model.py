@@ -8,6 +8,7 @@ from models.baselines.dgsda.dgsda import DGSDA
 from models.baselines.specreg.specreg import SpecReg
 from models.baselines.mlp.mlp import MLP
 from models.baselines.acdne.acdne import ACDNE
+from models.baselines.asn.asn import ASN
 
 from models.ours.simgda_role.simgda_role import SimGDARole
 from models.ours.simgda_spectral.simgda_spectral import SimGDASpectral
@@ -36,6 +37,7 @@ def build_model(config: dict):
         "mlp": MLP,
         "simmlp": SimMLP,
         "acdne": ACDNE,
+        "asn": ASN,
     }
 
     if model_name in models_dict:

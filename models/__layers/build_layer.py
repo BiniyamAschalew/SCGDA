@@ -1,4 +1,6 @@
 import torch
+from torch.nn import Linear, Sequential
+
 from torch_geometric.nn import GCNConv, SAGEConv, GATConv, GINConv
 from models.__layers.prop_gcn_conv import PropGCNConv
 

@@ -17,7 +17,7 @@ MODELS = {
     6:"dgsda",   7:"specreg",
     8:"simgda_role", 9:"simgda_spectral",
     10:"structalign2", 11:"mlp", 12:"simmlp",
-    13:"acdne",
+    13:"acdne", 14:"asn",
     }
 
 
@@ -32,22 +32,22 @@ ROLE_TYPES = {
     2:"signal_role"
     }
 
-REPEATS = 1
+REPEATS = 2
 role_type = ROLE_TYPES[1]
 
 SEED = 0
-EPOCHS = 200
-DEVICE = "cuda:5"
+# EPOCHS = 200
+DEVICE = "cuda:6"
 
-USE_TUNED = 0
+USE_TUNED = 2
 USE_DEFAULT = False
 WANDB = False
 
 id = {
-    "model": [13],
+    "model": [4],
     "dataset": [0],
     "source": [0],
-    "target": [1],
+    "target": [1, 2],
 }
 notes = "comparing_models"
 
@@ -94,7 +94,7 @@ for repeat in range(REPEATS):
                             "target": target,
                             "device": DEVICE,
                             "seed": SEED + repeat,
-                            "epochs": EPOCHS,
+                            # "epochs": EPOCHS,
                             "wandb_enabled": WANDB,
                             "project": "SCGDA",
                         },

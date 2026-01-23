@@ -9,7 +9,7 @@ from torch_geometric.loader import NeighborLoader
 
 from utils.train_utils.metrics import BaseMetric
 from utils.expt_utils import WandbHandler
-
+from models.__layers.build_layer import build_activation
 
 class BaseGDA(ABC):
 
@@ -32,6 +32,8 @@ class BaseGDA(ABC):
         self.epoch = config["model"].get("epochs", 190)
         self.device = config["expt"]["device"]
         self.verbose = config["expt"]["verbose"]
+
+        self.act = build_activation(config["model"]["activation"])
 
         # for early stopping
         self.time_stamp = time.strftime("%m_%d_%H_%M", time.localtime())
