@@ -33,8 +33,8 @@ class MLPBase(nn.Module):
             
     def forward(self, x, edge_index, edge_weight=None, batch=None):
 
-        x = self.feat_bottleneck(x, edge_index, edge_weight, batch)
-        x = self.feat_classifier(x, edge_index, edge_weight) 
+        x = self.feat_bottleneck(x) # edge_index, edge_weight, batch)
+        x = self.feat_classifier(x) #, edge_index, edge_weight) 
 
         x = F.log_softmax(x, dim=1)
 

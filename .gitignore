@@ -4,6 +4,7 @@ __external__/
 __design__/
 # any folder with the form __*__ is ignored
 __*__/
+wandb/
 
 *.csv
 *.yaml

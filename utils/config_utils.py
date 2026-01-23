@@ -11,7 +11,7 @@ OURS = [os.path.splitext(f)[0] for f in os.listdir(f"{CONFIG_DIR}/model_configs/
 def load_config(config_path: str):
     return OmegaConf.load(config_path)
 
-def build_config(config_setup: dict, update_config: dict = None, use_tuned: bool = False) -> dict:
+def build_config(config_setup: dict, update_config: dict = None, use_tuned: bool = False, use_default: bool = False) -> dict:
     configs = {}
 
     model = config_setup["model"]
@@ -20,7 +20,11 @@ def build_config(config_setup: dict, update_config: dict = None, use_tuned: bool
     elif model in OURS:
         config_setup["model"] = f"ours/{model}"
     else:
-        raise ValueError(f"Model '{model}' not found in baselines or ours.")
+        if use_default:
+            config_setup["model"] = "baselines/default"
+            print(f"Model '{model}' not found in baselines or ours. Using default config.")
+        else:
+            raise ValueError(f"Model '{model}' not found in baselines or ours.")
     
     for config_type, config_name in config_setup.items():
         config_type = config_type.lower()

@@ -12,7 +12,7 @@ class BaseMetric:
         self.metrics = config["expt"]["metrics"]
         self.verbose = config["expt"]["verbose"]
 
-    def __call__(self, logits, labels):
+    def __call__(self, logits, labels, tag=""):
 
         logits = logits.detach()
         labels = labels.detach()
@@ -22,9 +22,11 @@ class BaseMetric:
         preds = self.to_numpy(preds)
 
         result = {}
+
+
         for metric in self.metrics:
             metric_function = METRIC_FUNCTIONS[metric]
-            result[metric] = metric_function(labels, preds)
+            result[metric + tag] = metric_function(labels, preds)
 
         return result
 

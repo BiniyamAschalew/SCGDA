@@ -6,10 +6,6 @@ from utils.expt_utils import to_valid_dir
 from run import run
 import pandas as pd
 
-SEED = 0
-EPOCHS = 200
-DEVICE = "cuda:7"
-USE_TUNED = False
 
 BASELINES = {"gnn", "dane", "simgda", 
              "grade", "a2gnn", "strurw", 
@@ -20,7 +16,7 @@ MODELS = {
     4:"a2gnn",   5:"strurw", 
     6:"dgsda",   7:"specreg",
     8:"simgda_role", 9:"simgda_spectral",
-    10:"structalign2"
+    10:"structalign2", 11:"mlp", 12:"simmlp"
     }
 
 
@@ -38,11 +34,19 @@ ROLE_TYPES = {
 REPEATS = 1
 role_type = ROLE_TYPES[1]
 
+SEED = 0
+EPOCHS = 200
+DEVICE = "cuda:7"
+
+USE_TUNED = False
+USE_DEFAULT = False
+WANDB = False
+
 id = {
-    "model": [6],
+    "model": [7],
     "dataset": [0],
     "source": [0],
-    "target": [1],
+    "target": [0],
 }
 notes = "compare_role_types"
 
@@ -67,8 +71,8 @@ for repeat in range(REPEATS):
                 for tid in tgt_ids:
                     
                     # exclude same source and target
-                    if sid == tid:
-                        continue
+                    # if sid == tid:
+                    #     continue
 
                     if len(domains) <= max(sid, tid):
                         raise ValueError(f"selected domain id {sid} or {tid} exceeds available domains: len={len(domains)}")
@@ -90,6 +94,8 @@ for repeat in range(REPEATS):
                             "device": DEVICE,
                             "seed": SEED,
                             "epochs": EPOCHS,
+                            "wandb_enabled": WANDB,
+                            "project": "SCGDA",
                         },
                         "model":
                         {
@@ -99,7 +105,8 @@ for repeat in range(REPEATS):
                         
                     }
 
-                    config = build_config(config_setup, update_config, use_tuned=USE_TUNED)
+                    config = build_config(config_setup, update_config, 
+                                          use_tuned=USE_TUNED, use_default=USE_DEFAULT)
                     result = run(config)
 
                     result["repeat"] = repeat
