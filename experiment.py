@@ -31,24 +31,24 @@ ROLE_TYPES = {
     2:"signal_role"
     }
 
-REPEATS = 1
+REPEATS = 2
 role_type = ROLE_TYPES[1]
 
 SEED = 0
 EPOCHS = 200
-DEVICE = "cuda:7"
+DEVICE = "cuda:6"
 
-USE_TUNED = False
+USE_TUNED = 2
 USE_DEFAULT = False
 WANDB = False
 
 id = {
-    "model": [7],
+    "model": [4],
     "dataset": [0],
     "source": [0],
-    "target": [0],
+    "target": [1],
 }
-notes = "compare_role_types"
+notes = "comparing_models"
 
 combined_df = pd.DataFrame()
 cur_time = time.strftime("%d%H%M%S")
@@ -92,7 +92,7 @@ for repeat in range(REPEATS):
                             "source": source,
                             "target": target,
                             "device": DEVICE,
-                            "seed": SEED,
+                            "seed": SEED + repeat,
                             "epochs": EPOCHS,
                             "wandb_enabled": WANDB,
                             "project": "SCGDA",
@@ -113,6 +113,7 @@ for repeat in range(REPEATS):
                     result["source"] = source
                     result["target"] = target
                     result["cur_time"] = time.strftime("%d%H%M")
+                    result["use_tuned"] = USE_TUNED
 
                     model_name = model[:]
                     if "role" in model_name:

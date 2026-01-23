@@ -14,6 +14,7 @@ from data.build_dataset import build_dataset
 from models.build_model import build_model
 from utils.pygda_utils import build_pygda_model
 from utils.train_utils.metrics import BaseMetric
+from utils.expt_utils import set_seed
 
 import warnings
 
@@ -56,6 +57,7 @@ def run(config: dict, from_pygda: bool = False) -> dict:
     # print("\n=== Experiment Configuration ===")
     # print(f"Dataset: {config['data']['name']}, epochs: {config['expt']['epochs']}, model: {config['model']['name']}")
 
+    set_seed(config["expt"]["seed"])
     device = config["expt"]["device"]
     os.environ.setdefault("PYTORCH_CUDA_ALLOC_CONF", "max_split_size_mb:128")
 

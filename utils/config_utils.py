@@ -3,7 +3,7 @@ import os
 
 # should be modified incase of different environments
 CONFIG_DIR = "./configs"
-TUNED_DIR = "./hps/tuned"
+TUNED_DIR = "./__hps__/tuned"
 
 BASELINES = [os.path.splitext(f)[0] for f in os.listdir(f"{CONFIG_DIR}/model_configs/baselines") if f.endswith(".yaml")]
 OURS = [os.path.splitext(f)[0] for f in os.listdir(f"{CONFIG_DIR}/model_configs/ours") if f.endswith(".yaml")]
@@ -11,7 +11,7 @@ OURS = [os.path.splitext(f)[0] for f in os.listdir(f"{CONFIG_DIR}/model_configs/
 def load_config(config_path: str):
     return OmegaConf.load(config_path)
 
-def build_config(config_setup: dict, update_config: dict = None, use_tuned: bool = False, use_default: bool = False) -> dict:
+def build_config(config_setup: dict, update_config: dict = None, use_tuned: int = 0, use_default: bool = False) -> dict:
     configs = {}
 
     model = config_setup["model"]
@@ -40,10 +40,16 @@ def build_config(config_setup: dict, update_config: dict = None, use_tuned: bool
         cfg = OmegaConf.merge(cfg, OmegaConf.create(update_config))
 
     if use_tuned:
+        file = None
+        if use_tuned == 1: # using the best settings from pygda benchmark
+            file = "imported.yaml"
+        elif use_tuned == 2:
+            file = "best.yaml"
+
         source = cfg.expt.source
         target = cfg.expt.target
         dataset = cfg.data.name.lower()
-        tuned_config = load_config(f"{TUNED_DIR}/{model}/{dataset}/{source}_{target}/best.yaml")
+        tuned_config = load_config(f"{TUNED_DIR}/{model}/{dataset}/{source}_{target}/{file}")
         cfg.model = OmegaConf.merge(cfg.model, tuned_config)
         
         # if cfg.expt.verbose == 2:

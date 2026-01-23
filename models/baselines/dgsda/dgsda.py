@@ -154,17 +154,18 @@ class DGSDA(BaseGDA):
             train_results = self.metrics(epoch_source_logits, epoch_source_labels)
 
             self.log(epoch, epoch_loss, train_results)
-            early_stop = self.early_stop_check(self.dgsda, result=train_results, epoch=epoch)
 
-            if early_stop == "stop":
-                break
-            elif early_stop == "save":
-                torch.save(self.dgsda.state_dict(), self.best_model_dir)
+        #     early_stop = self.early_stop_check(self.dgsda, result=train_results, epoch=epoch)
+
+        #     if early_stop == "stop":
+        #         break
+        #     elif early_stop == "save":
+        #         torch.save(self.dgsda.state_dict(), self.best_model_dir)
+        # self.dgsda.load_state_dict(torch.load(self.best_model_dir))
 
         end_time = time.time()
         training_time = end_time - start_time
 
-        self.dgsda.load_state_dict(torch.load(self.best_model_dir))
         if self.verbose >= 1:
             print(f"== Best Model from Epoch {self.best_epoch+1:03d} with Val Micro-F1: {self.best_val:.4f} ==")
 
