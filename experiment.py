@@ -17,7 +17,7 @@ MODELS = {
     6:"dgsda",   7:"specreg",
     8:"simgda_role", 9:"simgda_spectral",
     10:"structalign2", 11:"mlp", 12:"simmlp",
-    13:"acdne", 14:"asn",
+    13:"acdne", 14:"asn", 15:"adagcn",
     }
 
 
@@ -37,14 +37,14 @@ role_type = ROLE_TYPES[1]
 
 SEED = 0
 # EPOCHS = 200
-DEVICE = "cuda:6"
+DEVICE = "cuda:7"
 
-USE_TUNED = 2
+USE_TUNED = 1
 USE_DEFAULT = False
 WANDB = False
 
 id = {
-    "model": [4],
+    "model": [15],
     "dataset": [0],
     "source": [0],
     "target": [1, 2],

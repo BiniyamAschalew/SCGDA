@@ -41,24 +41,6 @@ class GNN(torch.nn.Module):
 
     def forward(self, x, edge_index, batch, mode='node'):
         """
-        Forward pass of the GNN.
-
-        Parameters
-        ----------
-        x : torch.Tensor
-            Node features.
-        edge_index : torch.Tensor
-            Edge indices.
-        batch : torch.Tensor
-            Batch assignment for graph-level tasks.
-        mode : str, optional
-            'node' or 'graph' level task. Default: 'node'.
-
-        Returns
-        -------
-        torch.Tensor
-            Node or graph embeddings.
-
         Notes
         -----
         - Applies multiple GNN layers sequentially
@@ -79,29 +61,6 @@ class GNN(torch.nn.Module):
 
 class AdaGCNBase(nn.Module):
     """
-    Base class for AdaGCN.
-
-    Parameters
-    ----------
-    in_dim : int
-        Input feature dimension.
-    hid_dim : int
-        Hidden dimension.
-    num_classes : int
-        Number of target classes.
-    num_layers : int, optional
-        Number of GNN layers. Default: 3.
-    dropout : float, optional
-        Dropout rate. Default: 0.1.
-    act : callable, optional
-        Activation function. Default: F.relu.
-    gnn_type : str, optional
-        Type of GNN ('gcn' or 'ppmi'). Default: 'gcn'.
-    mode : str, optional
-        'node' or 'graph' level task. Default: 'node'.
-    **kwargs
-        Additional arguments.
-
     Notes
     -----
     Architecture components:
@@ -124,27 +83,12 @@ class AdaGCNBase(nn.Module):
         super(AdaGCNBase, self).__init__()
 
         self.encoder = GNN(in_dim=in_dim, hid_dim=hid_dim, gnn_type=gnn_type, act=act, num_layers=num_layers)
-        
         self.cls_model = nn.Sequential(nn.Linear(hid_dim, num_classes))
-
         self.mode = mode
-        
         self.loss_func = nn.CrossEntropyLoss()
     
     def forward(self, data):
         """
-        Forward pass of AdaGCN.
-
-        Parameters
-        ----------
-        data : torch_geometric.data.Data
-            Input graph data.
-
-        Returns
-        -------
-        torch.Tensor
-            Node/graph embeddings.
-
         Notes
         -----
         Process:
