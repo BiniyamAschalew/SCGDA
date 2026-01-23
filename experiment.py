@@ -32,19 +32,19 @@ ROLE_TYPES = {
     2:"signal_role"
     }
 
-REPEATS = 2
+REPEATS = 1
 role_type = ROLE_TYPES[1]
 
 SEED = 0
 # EPOCHS = 200
 DEVICE = "cuda:7"
 
-USE_TUNED = 1
+USE_TUNED = 0
 USE_DEFAULT = False
 WANDB = False
 
 id = {
-    "model": [15],
+    "model": [2],
     "dataset": [0],
     "source": [0],
     "target": [1, 2],

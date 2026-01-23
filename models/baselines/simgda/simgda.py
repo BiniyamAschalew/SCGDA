@@ -19,7 +19,7 @@ class SimGDA(BaseGDA):
 
         self.verbose = config["expt"]["verbose"]
         self.batch_size = config["model"]["batch_size"]
-        self.epoch = config["expt"]["epochs"]
+        #self.epoch = config["expt"]["epochs"]
     
 
         self.lr = config["model"]["lr"]

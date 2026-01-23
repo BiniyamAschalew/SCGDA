@@ -29,7 +29,7 @@ class BaseGDA(ABC):
         self.lr = config["model"]["lr"]
         self.batch_size = config["model"]["batch_size"]
 
-        self.epoch = config["model"].get("epochs", 190)
+        self.epoch = config["model"]["epochs"]
         self.device = config["expt"]["device"]
         self.verbose = config["expt"]["verbose"]
 
