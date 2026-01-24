@@ -44,7 +44,7 @@ USE_DEFAULT = False
 WANDB = False
 
 id = {
-    "model": [2],
+    "model": [6],
     "dataset": [0],
     "source": [0],
     "target": [1, 2],
