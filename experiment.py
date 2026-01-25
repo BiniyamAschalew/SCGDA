@@ -42,6 +42,7 @@ DEVICE = "cuda:7"
 USE_TUNED = 0
 USE_DEFAULT = False
 WANDB = False
+FROM_PYGDA = False
 
 id = {
     "model": [6],
@@ -108,7 +109,7 @@ for repeat in range(REPEATS):
 
                     config = build_config(config_setup, update_config, 
                                           use_tuned=USE_TUNED, use_default=USE_DEFAULT)
-                    result = run(config)
+                    result = run(config, from_pygda=FROM_PYGDA)
 
                     result["repeat"] = repeat
                     result["source"] = source

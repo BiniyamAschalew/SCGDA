@@ -15,6 +15,7 @@ def build_config(config_setup: dict, update_config: dict = None, use_tuned: int 
     configs = {}
 
     model = config_setup["model"]
+    model = model.lower()
     if model in BASELINES:
         config_setup["model"] = f"baselines/{model}"
     elif model in OURS:

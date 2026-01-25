@@ -1,32 +1,44 @@
+"""
+Code for running hp search.
+"""
+
 import argparse
 import csv
-import gc
-from tqdm import tqdm
-
-import math
+import fcntl
+import multiprocessing as mp
+import os
 import time
 from itertools import product
 from pathlib import Path
 
-import torch
-from omegaconf import OmegaConf
+import yaml
 
 from utils.config_utils import build_config
 from run import run
 
 
-def load_space(space_dir: Path, file_name: str) -> dict:
-    path = space_dir / f"{file_name.lower()}.yaml"
+def _resolve_config_path(config_value: str) -> Path:
+    path = Path(config_value)
+    if path.suffix != ".yaml":
+        path = Path("./configs/expt_configs") / f"{config_value}.yaml"
     if not path.exists():
-        raise FileNotFoundError(f"HP space file not found: {path}")
+        raise FileNotFoundError(f"Config file not found: {path}")
+    return path
 
-    space = OmegaConf.load(path)
-    if space is None or "model" not in space:
-        raise ValueError(f"HP space file must have a top-level 'model' key: {path}")
 
-    model_space = OmegaConf.to_container(space, resolve=True).get("model", {})
+def load_search_space(space_dir: Path, dataset: str) -> dict:
+    path = space_dir / f"{dataset.lower()}.yaml"
+    if not path.exists():
+        raise FileNotFoundError(f"Search space file not found: {path}")
+
+    with path.open("r") as f:
+        space = yaml.safe_load(f) or {}
+
+    model_space = space.get("model", {})
     if not model_space:
-        raise ValueError(f"No model hyperparameters found in: {path}")
+        raise ValueError(
+            f"Search space file must have a top-level 'model' key: {path}"
+        )
 
     normalized = {}
     for key, value in model_space.items():
@@ -35,245 +47,251 @@ def load_space(space_dir: Path, file_name: str) -> dict:
     return normalized
 
 
-def grid_from_space(model_space: dict):
-    keys = list(model_space.keys())
-    values = [model_space[key] for key in keys]
-    for combo in product(*values):
-        yield dict(zip(keys, combo))
+def build_combos(space: dict, max_combos: int) -> list:
+    keys = sorted(space.keys())
+    values = [space[key] for key in keys]
+    combos = []
 
-
-def list_datasets(config_dir: Path) -> list:
-    data_dir = config_dir / "data_configs"
-    return sorted(p.stem for p in data_dir.glob("*.yaml"))
-
-
-def parse_pairs(raw: str) -> list:
-    if not raw:
-        return []
-
-    pairs = []
-    for item in raw.split(","):
-        item = item.strip()
-        if not item:
-            continue
-        if "->" in item:
-            src, tgt = item.split("->", 1)
-        elif "_" in item:
-            src, tgt = item.split("_", 1)
-        else:
-            raise ValueError(
-                f"Invalid pair format '{item}'. Use SRC->TGT or SRC_TGT."
-            )
-        pairs.append((src, tgt))
-    return pairs
-
-
-def write_csv(path: Path, rows: list):
-    if not rows:
-        return
-    fieldnames = []
-    seen = set()
-    for row in rows:
-        for key in row.keys():
-            if key not in seen:
-                seen.add(key)
-                fieldnames.append(key)
-
-    path.parent.mkdir(parents=True, exist_ok=True)
-    with path.open("w", newline="") as f:
-        writer = csv.DictWriter(f, fieldnames=fieldnames)
-        writer.writeheader()
-        writer.writerows(rows)
-
-
-def tune_for_pair(
-    base_config,
-    model_space: dict,
-    seeds: list,
-    metric: str,
-    out_dir: Path,
-    max_combos: int,
-    write_best: bool,
-):
-    rows = []
-    summary = []
-
-    best_score = None
-    best_params = None
-
-    for config_id, params in enumerate(grid_from_space(model_space)):
-
-        if base_config.expt.verbose > 0:
-            print(f"Testing config {config_id}: {params}")
-        if max_combos and config_id >= max_combos:
+    for idx, combo in enumerate(product(*values)):
+        if max_combos and idx >= max_combos:
             break
+        combos.append((idx, dict(zip(keys, combo))))
 
-        scores = []
-        num_oom = 0
-        for seed in seeds:
-            cfg = OmegaConf.merge(
-                base_config,
-                {"model": params, "expt": {"seed": seed}},
+    return combos
+
+
+def iter_transfer_pairs(transfer_settings: dict):
+    for dataset, settings in transfer_settings.items():
+        if not isinstance(settings, dict):
+            raise ValueError(
+                "transfer_settings must map dataset to {source: target(s)}"
             )
-            result = run(OmegaConf.to_container(cfg, resolve=True))
-            if base_config.expt.verbose > 0:
-                print(f"  Seed {seed} result: {result}")
 
-            row = dict(result)
-            row.update(params)
-            row["config_id"] = config_id
-            rows.append(row)
+        for source, targets in settings.items():
+            if isinstance(targets, (list, tuple)):
+                for target in targets:
+                    yield dataset, source, target
+            else:
+                yield dataset, source, targets
 
-            if result.get("status") == "oom":
-                num_oom += 1
-                continue
 
-            if metric not in result:
-                raise KeyError(f"Metric '{metric}' not found in run result.")
+def unique_list(items: list) -> list:
+    seen = set()
+    out = []
+    for item in items:
+        if item in seen:
+            continue
+        seen.add(item)
+        out.append(item)
+    return out
 
-            score = float(result[metric])
-            if math.isnan(score):
-                continue
-            scores.append(score)
 
-            try:
-                gc.collect()
-                if torch.cuda.is_available():
-                    torch.cuda.empty_cache()
-            except Exception:
-                pass
+def append_row_csv(path: Path, row: dict, columns: list) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    payload = {col: row.get(col, "") for col in columns}
 
-        if scores:
-            avg_score = sum(scores) / len(scores)
-        else:
-            avg_score = float("nan")
-        summary.append(
-            {
-                "config_id": config_id,
-                "avg_score": avg_score,
-                "metric": metric,
-                "num_success": len(scores),
-                "num_oom": num_oom,
-                "status": "ok" if scores else "oom",
-                **params,
-            }
-        )
+    with path.open("a+", newline="") as f:
+        fcntl.flock(f, fcntl.LOCK_EX)
+        try:
+            f.seek(0, os.SEEK_END)
+            needs_header = f.tell() == 0
+            writer = csv.DictWriter(f, fieldnames=columns)
+            if needs_header:
+                writer.writeheader()
+            writer.writerow(payload)
+            f.flush()
+            os.fsync(f.fileno())
+        finally:
+            fcntl.flock(f, fcntl.LOCK_UN)
 
-        if scores and (best_score is None or avg_score > best_score):
-            best_score = avg_score
-            best_params = params
 
-    write_csv(out_dir / "results.csv", rows)
-    write_csv(out_dir / "summary.csv", summary)
-
-    if best_params is None:
-        return
-
-    best_model_config = OmegaConf.merge(base_config.model, best_params)
-    OmegaConf.save(best_model_config, out_dir / "best.yaml")
-
-    if write_best:
-        OmegaConf.save(best_model_config, out_dir / "default.yaml")
-
-    summary_payload = {
-        "metric": metric,
-        "score": best_score,
-        "seeds": seeds,
-        "params": best_params,
+def _build_error_result(config: dict, error: Exception, stage: str) -> dict:
+    expt = config.get("expt", {}) if isinstance(config, dict) else {}
+    model = config.get("model", {}) if isinstance(config, dict) else {}
+    return {
+        "status": "error",
+        "error_type": "exception",
+        "error_stage": stage,
+        "error": str(error),
+        "source": expt.get("source"),
+        "target": expt.get("target"),
+        "model": model.get("name"),
+        "seed": expt.get("seed"),
+        "train_time": 0.0,
+        "device": expt.get("device"),
     }
-    OmegaConf.save(OmegaConf.create(summary_payload), out_dir / "summary.yaml")
 
 
-def main():
+def _run_worker(config: dict, queue: mp.Queue) -> None:
+    try:
+        result = run(config)
+    except Exception as exc:
+        result = _build_error_result(config, exc, "run")
+    queue.put(result)
+
+
+def run_trial(config: dict, isolate_trials: bool) -> dict:
+    if not isolate_trials:
+        return run(config)
+
+    ctx = mp.get_context("spawn")
+    queue = ctx.Queue()
+    proc = ctx.Process(target=_run_worker, args=(config, queue))
+    proc.start()
+    proc.join()
+
+    try:
+        result = queue.get_nowait()
+    except Exception as exc:
+        result = _build_error_result(config, exc, "subprocess")
+    finally:
+        queue.close()
+        queue.join_thread()
+
+    return result
+
+
+def main() -> None:
     parser = argparse.ArgumentParser()
-    parser.add_argument("-m", "--model", required=True, help="Model name (e.g., gnn)")
-    parser.add_argument("--expt", default="default", help="Experiment config name")
     parser.add_argument(
-        "--datasets",
-        default="",
-        help="Comma-separated dataset list (default: all in configs/data_configs)",
-    )
-    parser.add_argument(
-        "--pairs",
-        default="",
-        help="Comma-separated pairs: SRC->TGT or SRC_TGT (optional)",
-    )
-    parser.add_argument("--metric", default="micro_f1")
-    parser.add_argument("--seed", type=int, default=0)
-    parser.add_argument("-r", "--repeat", type=int, default=3)
-    parser.add_argument("--device", default="")
-    parser.add_argument(
-        "-e",
-        "--epochs",
+        "--seed",
         type=int,
-        default=200,
-        help="Override epochs (omit to use config)",
     )
-    parser.add_argument("-v", "--verbose", type=int, default=0)
-    parser.add_argument("--max-combos", type=int, default=0)
-    parser.add_argument("-w", "--write-best", action="store_true")
-    parser.add_argument("--space-dir", default="hps/space")
-    parser.add_argument("--config-dir", default="configs")
+    parser.add_argument("--config", type=str)
+    parser.add_argument("--run-id", type=str)
+    parser.add_argument("--space-dir", type=str)
 
     args = parser.parse_args()
 
-    seeds = [args.seed + i for i in range(args.repeat)]
+    config_path = _resolve_config_path(args.config)
+    with config_path.open("r") as f:
+        config = yaml.safe_load(f) or {}
 
-    if args.datasets:
-        datasets = [d.strip() for d in args.datasets.split(",") if d.strip()]
-    else:
-        datasets = list_datasets(Path(args.config_dir))
+    seed = args.seed if args.seed is not None else config.get("seed", 200)
+    models = config["models"]
+    transfer_settings = config["transfer_settings"]
+    output_dir = Path(config["output_dir"])
+    output_dir.mkdir(parents=True, exist_ok=True)
 
-    pair_filter = parse_pairs(args.pairs)
+    search_space_dir = Path(args.space_dir.strip())
+    device = config.get("device", "cuda:0")
+    wandb_enabled = bool(config.get("wandb", False))
+    wandb_project = config.get("wandb_project", "SCGDA_HPTune")
+    verbose = int(config.get("verbose", 1))
+    metrics = config.get("metrics") or ["micro_f1", "macro_f1"]
+    max_combos = int(config.get("max_combos", 0))
+    prefix = config.get("prefix")
+    isolate_trials = bool(config.get("isolate_trials", True))
 
-    for dataset in tqdm(datasets, desc="Datasets"):
-        model_space = load_space(Path(args.space_dir), dataset)
-        base_config = OmegaConf.create(
-            build_config({"data": dataset, "model": args.model, "expt": args.expt})
-        )
-        if args.device:
-            base_config.expt.device = args.device
-        if args.epochs is not None:
-            base_config.expt.epochs = args.epochs
-        base_config.expt.verbose = args.verbose
+    run_id = args.run_id.strip() or time.strftime("%m%d_%H%M%S")
+    result_path = output_dir / f"results_{run_id}_seed{seed}.csv"
 
-        domains = base_config.data.domains
-        all_pairs = [(s, t) for s in domains for t in domains if s != t]
+    # Load already completed experiments for resume capability
+    completed_keys = set()
+    if result_path.exists():
+        try:
+            import pandas as pd
+            existing = pd.read_csv(result_path)
+            for _, row in existing.iterrows():
+                key = (row.get("dataset"), row.get("source"), row.get("target"), 
+                       row.get("model"), row.get("hp_id"))
+                completed_keys.add(key)
+            print(f"[Seed {seed}] Found {len(completed_keys)} completed experiments, will skip them")
+        except Exception as e:
+            print(f"[Seed {seed}] Warning: Could not read existing results: {e}")
 
-        if pair_filter:
-            all_pairs = [(s, t) for s, t in all_pairs if (s, t) in pair_filter]
-            if not all_pairs:
-                print(
-                    f"No valid pairs found for dataset '{dataset}' with filter {pair_filter}"
+    combo_cache = {}
+    hp_keys = set()
+    for dataset in transfer_settings.keys():
+        space = load_search_space(search_space_dir, dataset)
+        hp_keys.update(space.keys())
+        combo_cache[dataset] = build_combos(space, max_combos)
+
+    hp_keys_sorted = sorted(hp_keys)
+    columns = unique_list(
+        [
+            "run_id",
+            "dataset",
+            "source",
+            "target",
+            "model",
+            "seed",
+            "hp_id",
+        ]
+        + hp_keys_sorted
+        + metrics
+        + ["status", "train_time", "error_type", "error_stage", "error", "device"]
+    )
+
+    # Count total experiments for progress tracking
+    total_experiments = sum(
+        len(combo_cache[dataset]) * len(models)
+        for dataset in transfer_settings.keys()
+        for _ in iter_transfer_pairs({dataset: transfer_settings[dataset]})
+    )
+    current_exp = 0
+    skipped_exp = 0
+
+    for dataset, source, target in iter_transfer_pairs(transfer_settings):
+        combos = combo_cache[dataset]
+        for model in models:
+            model_name = f"{prefix}{model}" if prefix else model
+            for hp_id, hp_params in combos:
+                current_exp += 1
+                
+                # Skip already completed experiments
+                exp_key = (dataset, source, target, model_name, hp_id)
+                if exp_key in completed_keys:
+                    skipped_exp += 1
+                    if verbose:
+                        print(f"[Seed {seed}] Skipping {current_exp}/{total_experiments}: already completed")
+                    continue
+                
+                print(f"[Seed {seed}] Running {current_exp}/{total_experiments}: {model_name} hp_id={hp_id} on {dataset} ({source}->{target})")
+                
+                config_setup = {
+                    "data": dataset,
+                    "expt": "default",
+                    "model": model,
+                }
+
+                update_config = {
+                    "expt": {
+                        "source": source,
+                        "target": target,
+                        "device": device,
+                        "wandb_enabled": wandb_enabled,
+                        "project": wandb_project,
+                        "seed": seed,
+                        "verbose": verbose,
+                        "metrics": metrics,
+                    },
+                    "model": hp_params,
+                }
+
+                run_config = build_config(config_setup, update_config)
+                result = run_trial(run_config, isolate_trials)
+
+                row = dict(result)
+                row.update(
+                    {
+                        "run_id": run_id,
+                        "dataset": dataset,
+                        "source": source,
+                        "target": target,
+                        "model": model_name,
+                        "seed": seed,
+                        "hp_id": hp_id,
+                    }
                 )
-                continue
 
-        tuned_root = Path(base_config.expt.tuned_config_path)
+                for key in hp_keys_sorted:
+                    row[key] = hp_params.get(key)
 
-        for source, target in tqdm(all_pairs, desc="Domain Pairs", leave=False):
-            pair_config = OmegaConf.merge(
-                base_config,
-                {"expt": {"source": source, "target": target}},
-            )
+                append_row_csv(result_path, row, columns)
 
-            out_dir = tuned_root / args.model.lower() / dataset / f"{source}_{target}"
-            out_dir.mkdir(parents=True, exist_ok=True)
-
-            print(
-                f"== Tuning {args.model} on {dataset}: {source} -> {target} =="
-            )
-            start = time.time()
-            tune_for_pair(
-                pair_config,
-                model_space,
-                seeds,
-                args.metric,
-                out_dir,
-                args.max_combos,
-                args.write_best,
-            )
-            elapsed = time.time() - start
-            print(f"== Done in {elapsed:.1f}s, results saved to {out_dir} ==")
+    print(f"[Seed {seed}] HP tuning complete! Ran {current_exp - skipped_exp} experiments, skipped {skipped_exp}")
+    print(f"[Seed {seed}] Results saved to {result_path}")
 
 
 if __name__ == "__main__":

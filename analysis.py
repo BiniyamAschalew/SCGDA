@@ -62,13 +62,13 @@ def parse_args() -> argparse.Namespace:
     )
     parser.add_argument(
         "--results-dir",
-        default="__saved__/results/benchmark",
-        help="Directory containing benchmark CSV files.",
+        default=None,
+        help="Directory containing benchmark CSV files (e.g., __saved__/results/benchmark/run_0125_123456). If not specified, uses the latest run directory.",
     )
     parser.add_argument(
         "--pattern",
-        default="benchmark_*.csv",
-        help="Glob pattern for CSV files in results-dir.",
+        default="benchmark_*_seed*.csv",
+        help="Glob pattern for CSV files in results-dir (default matches seed-based files).",
     )
     parser.add_argument(
         "--files",
@@ -83,8 +83,8 @@ def parse_args() -> argparse.Namespace:
     )
     parser.add_argument(
         "--output",
-        default="__saved__/results/benchmark/benchmark_results2.tex",
-        help="Path to save the LaTeX table.",
+        default="__saved__/results/benchmark/benchmark_results.tex",
+        help="Path to save the LaTeX table (default: saves in the run directory).",
     )
     parser.add_argument(
         "--caption",
@@ -106,13 +106,24 @@ def parse_args() -> argparse.Namespace:
 
 
 def resolve_paths(
-    results_dir: str, pattern: str, files: Optional[Sequence[str]]
-) -> List[Path]:
+    results_dir: Optional[str], pattern: str, files: Optional[Sequence[str]]
+) -> Tuple[List[Path], Path]:
     if files:
         paths = [Path(p) for p in files]
+        # Use parent of first file as run_dir
+        run_dir = paths[0].parent if paths else Path("__saved__/results/benchmark")
     else:
-        base = Path(results_dir)
-        paths = sorted(base.glob(pattern))
+        if results_dir is None:
+            # Find the latest run directory
+            benchmark_base = Path("__saved__/results/benchmark")
+            run_dirs = sorted(benchmark_base.glob("run_*"), reverse=True)
+            if not run_dirs:
+                raise FileNotFoundError("No run directories found in __saved__/results/benchmark/")
+            results_dir = str(run_dirs[0])
+            print(f"Using latest run directory: {results_dir}")
+        
+        run_dir = Path(results_dir)
+        paths = sorted(run_dir.glob(pattern))
 
     if not paths:
         raise FileNotFoundError("No benchmark CSV files found.")
@@ -122,7 +133,7 @@ def resolve_paths(
         missing_str = ", ".join(str(p) for p in missing)
         raise FileNotFoundError(f"Missing CSV files: {missing_str}")
 
-    return paths
+    return paths, run_dir
 
 
 def load_results(paths: Iterable[Path]) -> pd.DataFrame:
@@ -394,7 +405,7 @@ def build_latex_table(
 
 def main() -> None:
     args = parse_args()
-    paths = resolve_paths(args.results_dir, args.pattern, args.files)
+    paths, run_dir = resolve_paths(args.results_dir, args.pattern, args.files)
     df = load_results(paths)
     df = normalize_results(df)
 
@@ -431,7 +442,11 @@ def main() -> None:
         label=args.label,
     )
 
-    output_path = Path(args.output)
+    # Use run_dir for output if default output path
+    if args.output == "__saved__/results/benchmark/benchmark_results.tex":
+        output_path = run_dir / "benchmark_results.tex"
+    else:
+        output_path = Path(args.output)
     output_path.parent.mkdir(parents=True, exist_ok=True)
     output_path.write_text(latex)
     print(f"LaTeX table saved to {output_path}")
