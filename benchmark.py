@@ -15,7 +15,7 @@ from run import run
 parser = argparse.ArgumentParser()
 parser.add_argument('--seed', type=int, default=200,
                     help='random seed for the benchmark run')
-parser.add_argument("--config", type=str, default="bench1",)
+parser.add_argument("--config", type=str, default=None)
 parser.add_argument("--run_dir", type=str, default=None,
                     help='directory to save results (created by run_benchmark.sh)')
 

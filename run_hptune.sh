@@ -1,12 +1,12 @@
 #!/bin/bash
 # Run hp tuning in parallel across GPUs/seeds.
-GPUS=(0 1 2 4 5)
+GPUS=(0 2 3 4 5)
 SEEDS=(200 201 202 203 204)
 
 # GPUS=(3)
 # SEEDS=(200)
 
-CONFIG="hp0"
+CONFIG="hp1"
 SPACE_DIR="__hps__/space/custom"
 RUN_ID="${2:-$(date +%m%d_%H%M%S)}"
 

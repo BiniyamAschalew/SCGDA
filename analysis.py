@@ -83,7 +83,7 @@ def parse_args() -> argparse.Namespace:
     )
     parser.add_argument(
         "--output",
-        default="__saved__/results/benchmark/benchmark_results.tex",
+        default="__saved__/results/benchmark/benchmark_results9.tex",
         help="Path to save the LaTeX table (default: saves in the run directory).",
     )
     parser.add_argument(

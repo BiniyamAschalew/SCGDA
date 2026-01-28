@@ -1,12 +1,12 @@
 #!/bin/bash
 # running a benchmark script on multiple gpus parallely
-GPUS=(5 5 6 6 7)
+GPUS=(2 3 4 5 6)
 seeds=(200 201 202 203 204)
-config="bench3"
+config="bench4"
 
 # Create timestamped run directory
 run_timestamp=$(date +"%m%d_%H%M%S")
-run_dir="__saved__/results/benchmark/run_${run_timestamp}"
+run_dir="__saved__/results/benchmark/${config}/run_${run_timestamp}"
 mkdir -p "${run_dir}"
 echo "Saving benchmark results to: ${run_dir}"
 

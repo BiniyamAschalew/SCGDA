@@ -11,7 +11,8 @@ OURS = [os.path.splitext(f)[0] for f in os.listdir(f"{CONFIG_DIR}/model_configs/
 def load_config(config_path: str):
     return OmegaConf.load(config_path)
 
-def build_config(config_setup: dict, update_config: dict = None, use_tuned: int = 0, use_default: bool = False) -> dict:
+def build_config(config_setup: dict, update_config: dict = None, borrow: str = None,
+                 use_tuned: int = 0, use_default: bool = False) -> dict:
     configs = {}
 
     model = config_setup["model"]
@@ -21,11 +22,7 @@ def build_config(config_setup: dict, update_config: dict = None, use_tuned: int 
     elif model in OURS:
         config_setup["model"] = f"ours/{model}"
     else:
-        if use_default:
-            config_setup["model"] = "baselines/default"
-            print(f"Model '{model}' not found in baselines or ours. Using default config.")
-        else:
-            raise ValueError(f"Model '{model}' not found in baselines or ours.")
+        raise ValueError(f"Model '{model}' not found in baselines or ours.")
     
     for config_type, config_name in config_setup.items():
         config_type = config_type.lower()
@@ -50,7 +47,13 @@ def build_config(config_setup: dict, update_config: dict = None, use_tuned: int 
         source = cfg.expt.source
         target = cfg.expt.target
         dataset = cfg.data.name.lower()
-        tuned_config = load_config(f"{TUNED_DIR}/{model}/{dataset}/{source}_{target}/{file}")
+
+        if borrow:
+            tuned_config = load_config(f"{TUNED_DIR}/{borrow}/{dataset}/{source}_{target}/{file}")
+            tuned_config.name = model  # keep the original model name
+        else:
+            tuned_config = load_config(f"{TUNED_DIR}/{model}/{dataset}/{source}_{target}/{file}")
+        
         cfg.model = OmegaConf.merge(cfg.model, tuned_config)
         
         # if cfg.expt.verbose == 2:

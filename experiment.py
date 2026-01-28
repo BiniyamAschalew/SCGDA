@@ -18,6 +18,7 @@ MODELS = {
     8:"simgda_role", 9:"simgda_spectral",
     10:"structalign2", 11:"mlp", 12:"simmlp",
     13:"acdne", 14:"asn", 15:"adagcn",
+    16:"dlit", 17:"simgda_cheb",
     }
 
 
@@ -32,25 +33,29 @@ ROLE_TYPES = {
     2:"signal_role"
     }
 
-REPEATS = 1
-role_type = ROLE_TYPES[1]
+REPEATS = 2
+role_type = ROLE_TYPES[2]
 
 SEED = 0
 # EPOCHS = 200
-DEVICE = "cuda:7"
+DEVICE = "cuda:1"
 
 USE_TUNED = 0
+
+BORROW = "simgda"
+# BORROW = None
+
 USE_DEFAULT = False
 WANDB = False
 FROM_PYGDA = False
 
 id = {
-    "model": [6],
-    "dataset": [0],
+    "model": [17],
+    "dataset": [1, 2],
     "source": [0],
-    "target": [1, 2],
+    "target": [1],
 }
-notes = "comparing_models"
+notes = "dlit_evaluation"
 
 combined_df = pd.DataFrame()
 cur_time = time.strftime("%d%H%M%S")
@@ -73,8 +78,8 @@ for repeat in range(REPEATS):
                 for tid in tgt_ids:
                     
                     # exclude same source and target
-                    # if sid == tid:
-                    #     continue
+                    if sid == tid:
+                        continue
 
                     if len(domains) <= max(sid, tid):
                         raise ValueError(f"selected domain id {sid} or {tid} exceeds available domains: len={len(domains)}")
@@ -107,7 +112,7 @@ for repeat in range(REPEATS):
                         
                     }
 
-                    config = build_config(config_setup, update_config, 
+                    config = build_config(config_setup, update_config, borrow=BORROW,
                                           use_tuned=USE_TUNED, use_default=USE_DEFAULT)
                     result = run(config, from_pygda=FROM_PYGDA)
 
