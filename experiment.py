@@ -11,14 +11,15 @@ BASELINES = {"gnn", "dane", "simgda",
              "grade", "a2gnn", "strurw", 
              "dgsda", "specreg"}
 MODELS = {
-    0:"gnn",   1: "dane", 
-    2:"simgda",   3:"grade", 
-    4:"a2gnn",   5:"strurw", 
+    0:"gnn",   1: "dane",
+    2:"simgda",   3:"grade",
+    4:"a2gnn",   5:"strurw",
     6:"dgsda",   7:"specreg",
     8:"simgda_role", 9:"simgda_spectral",
     10:"structalign2", 11:"mlp", 12:"simmlp",
     13:"acdne", 14:"asn", 15:"adagcn",
     16:"dlit", 17:"simgda_cheb",
+    18:"scgda",
     }
 
 
