@@ -49,6 +49,28 @@ def _write_yaml(path: Path, payload: dict) -> None:
         yaml.safe_dump(payload, f, sort_keys=False)
 
 
+def _append_performance_csv(path: Path, time_id: str, metrics_dict: dict) -> None:
+    """Append performance metrics to a CSV file, creating it if it doesn't exist."""
+    path.parent.mkdir(parents=True, exist_ok=True)
+    
+    row_data = {"time_id": time_id, **metrics_dict}
+    new_row = pd.DataFrame([row_data])
+    
+    if path.exists():
+        existing = pd.read_csv(path)
+        # Check if this time_id already exists
+        if time_id in existing["time_id"].values:
+            # Update existing row
+            existing.loc[existing["time_id"] == time_id, list(metrics_dict.keys())] = list(metrics_dict.values())
+            existing.to_csv(path, index=False)
+        else:
+            # Append new row
+            combined = pd.concat([existing, new_row], ignore_index=True)
+            combined.to_csv(path, index=False)
+    else:
+        new_row.to_csv(path, index=False)
+
+
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument(
@@ -147,6 +169,9 @@ def main() -> None:
     group_cols = ["model", "dataset", "source", "target", "hp_id"] + hp_cols
     grouped = df.groupby(group_cols, dropna=False)[metric].mean().reset_index()
 
+    # Also compute mean for all metrics for reporting
+    all_metrics_grouped = df.groupby(group_cols, dropna=False)[list(metrics)].mean().reset_index()
+
     best_rows = (
         grouped.sort_values(metric, ascending=False)
         .groupby(["model", "dataset", "source", "target"], as_index=False)
@@ -166,6 +191,20 @@ def main() -> None:
         out_dir = output_root / model / dataset / f"{source}_{target}"
         _write_yaml(out_dir / f"{time_id}.yaml", hp_payload)
         _write_yaml(out_dir / "best.yaml", hp_payload)
+
+        # Get metric values for this best config
+        mask = (
+            (all_metrics_grouped["model"] == row["model"]) &
+            (all_metrics_grouped["dataset"] == row["dataset"]) &
+            (all_metrics_grouped["source"] == row["source"]) &
+            (all_metrics_grouped["target"] == row["target"]) &
+            (all_metrics_grouped["hp_id"] == row["hp_id"])
+        )
+        metrics_row = all_metrics_grouped.loc[mask]
+        
+        if not metrics_row.empty:
+            metrics_dict = {m: float(metrics_row[m].iloc[0]) for m in metrics if m in metrics_row.columns}
+            _append_performance_csv(out_dir / "performance.csv", time_id, metrics_dict)
 
     print(f"Saved best configs to {output_root}")
 
