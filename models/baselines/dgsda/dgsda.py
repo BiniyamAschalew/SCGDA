@@ -53,7 +53,9 @@ class DGSDA(BaseGDA):
         theta_s = self.dgsda.prop1.temp
         theta_t = self.dgsda.prop2.temp
 
-        theta_loss = F.l1_loss(theta_s, theta_t)
+        # theta_loss = F.l1_loss(theta_s, theta_t)
+        theta_loss = F.l1_loss(theta_s, theta_t) + torch.sum(torch.abs(theta_s)) + torch.sum(torch.abs(theta_t))
+
         loss = loss + theta_loss * self.alpha
 
         source_feature = F.relu(self.dgsda.lin1(source_data.x))

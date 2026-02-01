@@ -34,7 +34,7 @@ ROLE_TYPES = {
     2:"signal_role"
     }
 
-REPEATS = 2
+REPEATS = 1
 role_type = ROLE_TYPES[2]
 
 SEED = 0
@@ -43,20 +43,20 @@ DEVICE = "cuda:1"
 
 USE_TUNED = 0
 
-BORROW = "simgda"
-# BORROW = None
+# BORROW = "simgda"
+BORROW = None
 
 USE_DEFAULT = False
-WANDB = False
+WANDB = True
 FROM_PYGDA = False
 
 id = {
-    "model": [17],
-    "dataset": [1, 2],
+    "model": [6],
+    "dataset": [1],
     "source": [0],
     "target": [1],
 }
-notes = "dlit_evaluation"
+notes = "dgsda_evaluation"
 
 combined_df = pd.DataFrame()
 cur_time = time.strftime("%d%H%M%S")
