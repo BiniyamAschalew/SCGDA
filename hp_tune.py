@@ -1,260 +1,151 @@
 """
-Code for running hp search.
+Simplified HP tuning script. Designed to be invoked per-seed from run_hptune.sh.
+
+Usage:
+    python hp_tune2.py --config hp2 --space-dir __hps__/space/dgsda --seed 200
+
+When --use-tuned is passed, non-search params are loaded from the best.yaml
+of a previous tuning run for each (source, target) pair. Only the params
+in the search space are varied; everything else comes from the tuned config.
 """
 
 import argparse
-import csv
-import fcntl
-import multiprocessing as mp
 import os
 import time
 from itertools import product
 from pathlib import Path
 
+import pandas as pd
 import yaml
 
 from utils.config_utils import build_config
 from run import run
 
-
-def _resolve_config_path(config_value: str) -> Path:
-    path = Path(config_value)
-    if path.suffix != ".yaml":
-        path = Path("./configs/expt_configs") / f"{config_value}.yaml"
-    if not path.exists():
-        raise FileNotFoundError(f"Config file not found: {path}")
-    return path
+TUNED_DIR = Path("__hps__/tuned")
 
 
 def load_search_space(space_dir: Path, dataset: str) -> dict:
     path = space_dir / f"{dataset.lower()}.yaml"
-    if not path.exists():
-        raise FileNotFoundError(f"Search space file not found: {path}")
-
-    with path.open("r") as f:
+    with path.open() as f:
         space = yaml.safe_load(f) or {}
-
     model_space = space.get("model", {})
-    if not model_space:
-        raise ValueError(
-            f"Search space file must have a top-level 'model' key: {path}"
-        )
-
-    normalized = {}
-    for key, value in model_space.items():
-        normalized[key] = value if isinstance(value, list) else [value]
-
-    return normalized
+    return {k: (v if isinstance(v, list) else [v]) for k, v in model_space.items()}
 
 
-def build_combos(space: dict, max_combos: int) -> list:
-    keys = sorted(space.keys())
-    values = [space[key] for key in keys]
-    combos = []
-
-    for idx, combo in enumerate(product(*values)):
-        if max_combos and idx >= max_combos:
-            break
-        combos.append((idx, dict(zip(keys, combo))))
-
-    return combos
+def load_tuned_config(model: str, dataset: str, source: str, target: str) -> dict:
+    path = TUNED_DIR / model / dataset.lower() / f"{source}_{target}" / "best.yaml"
+    if not path.exists():
+        print(f"  [warn] No tuned config at {path}, using defaults")
+        return {}
+    with path.open() as f:
+        return yaml.safe_load(f) or {}
 
 
 def iter_transfer_pairs(transfer_settings: dict):
     for dataset, settings in transfer_settings.items():
-        if not isinstance(settings, dict):
-            raise ValueError(
-                "transfer_settings must map dataset to {source: target(s)}"
-            )
-
         for source, targets in settings.items():
-            if isinstance(targets, (list, tuple)):
-                for target in targets:
-                    yield dataset, source, target
-            else:
-                yield dataset, source, targets
+            for target in (targets if isinstance(targets, list) else [targets]):
+                yield dataset, source, target
 
 
-def unique_list(items: list) -> list:
-    seen = set()
-    out = []
-    for item in items:
-        if item in seen:
-            continue
-        seen.add(item)
-        out.append(item)
-    return out
-
-
-def append_row_csv(path: Path, row: dict, columns: list) -> None:
-    path.parent.mkdir(parents=True, exist_ok=True)
-    payload = {col: row.get(col, "") for col in columns}
-
-    with path.open("a+", newline="") as f:
-        fcntl.flock(f, fcntl.LOCK_EX)
-        try:
-            f.seek(0, os.SEEK_END)
-            needs_header = f.tell() == 0
-            writer = csv.DictWriter(f, fieldnames=columns)
-            if needs_header:
-                writer.writeheader()
-            writer.writerow(payload)
-            f.flush()
-            os.fsync(f.fileno())
-        finally:
-            fcntl.flock(f, fcntl.LOCK_UN)
-
-
-def _build_error_result(config: dict, error: Exception, stage: str) -> dict:
-    expt = config.get("expt", {}) if isinstance(config, dict) else {}
-    model = config.get("model", {}) if isinstance(config, dict) else {}
-    return {
-        "status": "error",
-        "error_type": "exception",
-        "error_stage": stage,
-        "error": str(error),
-        "source": expt.get("source"),
-        "target": expt.get("target"),
-        "model": model.get("name"),
-        "seed": expt.get("seed"),
-        "train_time": 0.0,
-        "device": expt.get("device"),
-    }
-
-
-def _run_worker(config: dict, queue: mp.Queue) -> None:
-    try:
-        result = run(config)
-    except Exception as exc:
-        result = _build_error_result(config, exc, "run")
-    queue.put(result)
-
-
-def run_trial(config: dict, isolate_trials: bool) -> dict:
-    if not isolate_trials:
-        return run(config)
-
-    ctx = mp.get_context("spawn")
-    queue = ctx.Queue()
-    proc = ctx.Process(target=_run_worker, args=(config, queue))
-    proc.start()
-    proc.join()
-
-    try:
-        result = queue.get_nowait()
-    except Exception as exc:
-        result = _build_error_result(config, exc, "subprocess")
-    finally:
-        queue.close()
-        queue.join_thread()
-
-    return result
-
-
-def main() -> None:
-    parser = argparse.ArgumentParser()
-    parser.add_argument(
-        "--seed",
-        type=int,
-    )
-    parser.add_argument("--config", type=str)
-    parser.add_argument("--run-id", type=str)
-    parser.add_argument("--space-dir", type=str)
-
+def main():
+    parser = argparse.ArgumentParser(description="Simplified HP tuning")
+    parser.add_argument("--config", type=str, required=True)
+    parser.add_argument("--space-dir", type=str, required=True)
+    parser.add_argument("--seed", type=int, default=200)
+    parser.add_argument("--run-id", type=str, default="")
+    parser.add_argument("--use-tuned", action="store_true",
+                        help="Load non-search params from best.yaml of previous tuning")
     args = parser.parse_args()
 
-    config_path = _resolve_config_path(args.config)
-    with config_path.open("r") as f:
-        config = yaml.safe_load(f) or {}
+    # Load experiment config
+    config_path = Path(f"./configs/expt_configs/{args.config}.yaml")
+    if not config_path.exists():
+        config_path = Path(args.config)
+    with config_path.open() as f:
+        cfg = yaml.safe_load(f)
 
-    seed = args.seed if args.seed is not None else config.get("seed", 200)
-    models = config["models"]
-    transfer_settings = config["transfer_settings"]
-    output_dir = Path(config["output_dir"])
+    models = cfg["models"]
+    transfer_settings = cfg["transfer_settings"]
+    output_dir = Path(cfg.get("output_dir", "./__saved__/results/hp_tune"))
     output_dir.mkdir(parents=True, exist_ok=True)
 
-    search_space_dir = Path(args.space_dir.strip())
-    device = config.get("device", "cuda:0")
-    wandb_enabled = bool(config.get("wandb", False))
-    wandb_project = config.get("wandb_project", "SCGDA_HPTune")
-    verbose = int(config.get("verbose", 1))
-    metrics = config.get("metrics") or ["micro_f1", "macro_f1"]
-    max_combos = int(config.get("max_combos", 0))
-    prefix = config.get("prefix")
-    isolate_trials = bool(config.get("isolate_trials", True))
-
+    device = cfg.get("device", "cuda:0")
+    wandb_enabled = cfg.get("wandb", False)
+    wandb_project = cfg.get("wandb_project", "SCGDA_HPTune")
+    verbose = cfg.get("verbose", 0)
+    metrics = cfg.get("metrics", ["micro_f1", "macro_f1"])
+    max_combos = cfg.get("max_combos", 0)
+    space_dir = Path(args.space_dir.strip())
     run_id = args.run_id.strip() or time.strftime("%m%d_%H%M%S")
-    result_path = output_dir / f"results_{run_id}_seed{seed}.csv"
 
-    # Load already completed experiments for resume capability
-    completed_keys = set()
+    result_path = output_dir / f"results_{run_id}_seed{args.seed}.csv"
+
+    # Resume: load already-completed experiment keys
+    completed = set()
     if result_path.exists():
         try:
-            import pandas as pd
-            existing = pd.read_csv(result_path)
-            for _, row in existing.iterrows():
-                key = (row.get("dataset"), row.get("source"), row.get("target"), 
-                       row.get("model"), row.get("hp_id"))
-                completed_keys.add(key)
-            print(f"[Seed {seed}] Found {len(completed_keys)} completed experiments, will skip them")
-        except Exception as e:
-            print(f"[Seed {seed}] Warning: Could not read existing results: {e}")
+            df = pd.read_csv(result_path)
+            for _, row in df.iterrows():
+                completed.add((row.get("dataset"), row.get("source"),
+                               row.get("target"), row.get("model"), row.get("hp_id")))
+            print(f"[seed {args.seed}] Resuming: {len(completed)} completed, will skip")
+        except Exception:
+            pass
 
+    # Build search combos per dataset
     combo_cache = {}
-    hp_keys = set()
-    for dataset in transfer_settings.keys():
-        space = load_search_space(search_space_dir, dataset)
-        hp_keys.update(space.keys())
-        combo_cache[dataset] = build_combos(space, max_combos)
+    for dataset in transfer_settings:
+        space = load_search_space(space_dir, dataset)
+        keys = sorted(space)
+        vals = [space[k] for k in keys]
+        combos = []
+        for i, combo in enumerate(product(*vals)):
+            if max_combos and i >= max_combos:
+                break
+            combos.append((i, dict(zip(keys, combo))))
+        combo_cache[dataset] = combos
 
-    hp_keys_sorted = sorted(hp_keys)
-    columns = unique_list(
-        [
-            "run_id",
-            "dataset",
-            "source",
-            "target",
-            "model",
-            "seed",
-            "hp_id",
-        ]
-        + hp_keys_sorted
-        + metrics
-        + ["status", "train_time", "error_type", "error_stage", "error", "device"]
+    # Run trials
+    all_rows = []
+    total = sum(
+        len(combo_cache[d]) * len(models)
+        for d, _, _ in iter_transfer_pairs(transfer_settings)
     )
-
-    # Count total experiments for progress tracking
-    total_experiments = sum(
-        len(combo_cache[dataset]) * len(models)
-        for dataset in transfer_settings.keys()
-        for _ in iter_transfer_pairs({dataset: transfer_settings[dataset]})
-    )
-    current_exp = 0
-    skipped_exp = 0
+    n = 0
 
     for dataset, source, target in iter_transfer_pairs(transfer_settings):
         combos = combo_cache[dataset]
+
+        # Load tuned base config for this pair if requested
+        tuned_base = {}
+        if args.use_tuned and len(models) > 0:
+            tuned_base = load_tuned_config(models[0], dataset, source, target)
+
         for model in models:
-            model_name = f"{prefix}{model}" if prefix else model
+            if args.use_tuned:
+                tuned_base = load_tuned_config(model, dataset, source, target)
+
             for hp_id, hp_params in combos:
-                current_exp += 1
-                
-                # Skip already completed experiments
-                exp_key = (dataset, source, target, model_name, hp_id)
-                if exp_key in completed_keys:
-                    skipped_exp += 1
-                    if verbose:
-                        print(f"[Seed {seed}] Skipping {current_exp}/{total_experiments}: already completed")
+                n += 1
+                key = (dataset, source, target, model, hp_id)
+                if key in completed:
                     continue
-                
-                print(f"[Seed {seed}] Running {current_exp}/{total_experiments}: {model_name} hp_id={hp_id} on {dataset} ({source}->{target})")
-                
+
+                print(f"[seed {args.seed}] {n}/{total}: {model} hp={hp_id} "
+                      f"{dataset} {source}->{target}")
+
+                # Build model params: start from tuned base, override with search params
+                model_overrides = {}
+                if args.use_tuned and tuned_base:
+                    model_overrides.update(tuned_base)
+                model_overrides.update(hp_params)
+
                 config_setup = {
                     "data": dataset,
                     "expt": "default",
                     "model": model,
                 }
-
                 update_config = {
                     "expt": {
                         "source": source,
@@ -262,36 +153,47 @@ def main() -> None:
                         "device": device,
                         "wandb_enabled": wandb_enabled,
                         "project": wandb_project,
-                        "seed": seed,
+                        "seed": args.seed,
                         "verbose": verbose,
                         "metrics": metrics,
                     },
-                    "model": hp_params,
+                    "model": model_overrides,
                 }
 
                 run_config = build_config(config_setup, update_config)
-                result = run_trial(run_config, isolate_trials)
 
-                row = dict(result)
-                row.update(
-                    {
-                        "run_id": run_id,
-                        "dataset": dataset,
-                        "source": source,
-                        "target": target,
-                        "model": model_name,
-                        "seed": seed,
-                        "hp_id": hp_id,
-                    }
-                )
+                try:
+                    result = run(run_config)
+                except Exception as e:
+                    result = {"status": "error", "error": str(e)}
+                    for m in metrics:
+                        result[m] = float("nan")
 
-                for key in hp_keys_sorted:
-                    row[key] = hp_params.get(key)
+                row = {
+                    "run_id": run_id,
+                    "dataset": dataset,
+                    "source": source,
+                    "target": target,
+                    "model": model,
+                    "seed": args.seed,
+                    "hp_id": hp_id,
+                    "status": result.get("status", "ok"),
+                    "train_time": result.get("train_time", 0),
+                }
+                for m in metrics:
+                    row[m] = result.get(m)
+                for k, v in hp_params.items():
+                    row[k] = v
 
-                append_row_csv(result_path, row, columns)
+                all_rows.append(row)
 
-    print(f"[Seed {seed}] HP tuning complete! Ran {current_exp - skipped_exp} experiments, skipped {skipped_exp}")
-    print(f"[Seed {seed}] Results saved to {result_path}")
+                # Append incrementally
+                df_row = pd.DataFrame([row])
+                df_row.to_csv(result_path, mode="a",
+                              header=not result_path.exists() or os.path.getsize(result_path) == 0,
+                              index=False)
+
+    print(f"[seed {args.seed}] Done. {len(all_rows)} trials. Results: {result_path}")
 
 
 if __name__ == "__main__":

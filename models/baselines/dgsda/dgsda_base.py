@@ -7,7 +7,7 @@ from models.__components.bernprop import BernProp
 
 class DGSDABase(nn.Module):
 
-    def __init__(self, features, hidden, classes, dprate=0.0, K=15):
+    def __init__(self, features, hidden, classes, dropout=0.0, dprate=0.0, K=15):
         super(DGSDABase, self).__init__()
         self.lin1 = nn.Linear(features, hidden)
         self.lin2 = nn.Linear(hidden, classes)
@@ -15,6 +15,7 @@ class DGSDABase(nn.Module):
         self.prop2 = BernProp(K)
         self.prop3 = BernProp(K)
 
+        self.dropout = dropout
         self.dprate = dprate
 
     def reset_parameters(self):
@@ -27,7 +28,7 @@ class DGSDABase(nn.Module):
 
         x = self.get_props(x, edge_index, is_source_domain)
 
-        x = F.dropout(x, p=self.dprate, training=self.training)
+        x = F.dropout(x, p=self.dropout, training=self.training)
         x = self.lin2(x)
 
         x = F.dropout(x, p=self.dprate, training=self.training)
@@ -36,7 +37,7 @@ class DGSDABase(nn.Module):
 
     def get_props(self, x, edge_index, is_source_domain=True):
 
-        x = F.dropout(x, p=self.dprate, training=self.training)
+        x = F.dropout(x, p=self.dropout, training=self.training)
         x = F.relu(self.lin1(x))
 
         x = F.dropout(x, p=self.dprate, training=self.training)

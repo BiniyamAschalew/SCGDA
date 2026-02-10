@@ -7,7 +7,7 @@ SEEDS=(200 201 202 203 204)
 # SEEDS=(200)
 
 CONFIG="hp2"
-SPACE_DIR="__hps__/space/dgsda"
+SPACE_DIR="__hps__/space/limited_dgsda"
 RUN_ID="${2:-$(date +%m%d_%H%M%S)}"
 
 if [ "${#GPUS[@]}" -ne "${#SEEDS[@]}" ]; then

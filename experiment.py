@@ -20,6 +20,7 @@ MODELS = {
     13:"acdne", 14:"asn", 15:"adagcn",
     16:"dlit", 17:"simgda_cheb",
     18:"scgda",
+    19:"dgsda_probe",
     }
 
 
@@ -39,27 +40,27 @@ role_type = ROLE_TYPES[2]
 
 SEED = 0
 # EPOCHS = 200
-DEVICE = "cuda:1"
+DEVICE = "cuda:5"
 
 USE_TUNED = 0
 
 # BORROW = "simgda"
-BORROW = None
+BORROW = "dgsda"
 
 USE_DEFAULT = False
-WANDB = True
+WANDB = False
 FROM_PYGDA = False
 
 id = {
-    "model": [6],
-    "dataset": [1],
+    "model": [2],
+    "dataset": [2],
     "source": [0],
     "target": [1],
 }
 notes = "dgsda_evaluation"
 
 combined_df = pd.DataFrame()
-cur_time = time.strftime("%d%H%M%S")
+cur_time = time.strftime("%m%d%H%M%S")
 
 for repeat in range(REPEATS):
     for mid in id["model"]:

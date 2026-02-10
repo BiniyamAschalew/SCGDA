@@ -50,9 +50,6 @@ class WandbHandler:
         self.enabled = config["expt"]["wandb_enabled"]
         self.project = config["expt"]["project"]
 
-        if config["model"]["name"].lower() == "a2gnn":
-            config["model"]["name"] = "X2GDA"
-
         self.name = self._get_name(config)
         self.tag = config["expt"]["tag"]
         self.verbose = config["expt"]["verbose"]
@@ -81,10 +78,8 @@ class WandbHandler:
 
     def _get_name(self, config: dict):
         name = config["model"]["name"]
-
-        s_t = ''
-        gnn = config["model"]["gnn"]
-        name = f"{name}_{s_t}_{gnn}"
+        s_t = f"{config['expt']['source']}_{config['expt']['target']}"
+        name = f"{name}_{s_t}"
 
         if config["expt"]["use_time"]:
             time = f"{datetime.now().strftime('%d|%H:%M')}"

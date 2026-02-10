@@ -53,7 +53,10 @@ class AirportDataset(BaseDataset):
         if self.pre_transform is not None:
             if not os.path.exists(self.processed_paths[0] + "eival.pt"):
                 data = self.pre_transform(data, self.processed_paths[0])
-
+            else:
+                data.eival = torch.load(self.processed_paths[0] + 'eival.pt')
+                data.eivec = torch.load(self.processed_paths[0] + 'eivec.pt')
+                
         data_list.append(data)
         data, slices = self.collate([data])
 

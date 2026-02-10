@@ -13,7 +13,6 @@ from models.baselines.dgsda.dgsda_base import DGSDABase
 from utils.train_utils.mmd import MMD
 
 
-
 class DGSDA(BaseGDA):
 
     def __init__(self, config: dict):
@@ -26,6 +25,7 @@ class DGSDA(BaseGDA):
         self.alpha=config["model"]["alpha"]
         self.beta=config["model"]["beta"]
         self.gamma=config["model"]["gamma"]
+        self.dprate=config["model"].get("dprate", self.dropout)
 
         assert self.num_layers==2, 'unsupport number of layers'
         assert self.mode=='node', 'unsupport mode'
@@ -37,9 +37,10 @@ class DGSDA(BaseGDA):
             features=self.in_dim,
             hidden=self.hid_dim,
             classes=self.num_classes,
-            dprate=self.dropout,
+            dropout=self.dropout,
+            dprate=self.dprate,
             K=self.K,
-            
+
         ).to(self.device)
 
 
@@ -53,8 +54,9 @@ class DGSDA(BaseGDA):
         theta_s = self.dgsda.prop1.temp
         theta_t = self.dgsda.prop2.temp
 
-        # theta_loss = F.l1_loss(theta_s, theta_t)
+        # theta_loss = F.l1_loss(theta_s, theta_t) #43.54
         theta_loss = F.l1_loss(theta_s, theta_t) + torch.sum(torch.abs(theta_s)) + torch.sum(torch.abs(theta_t))
+        # 43.54
 
         loss = loss + theta_loss * self.alpha
 
@@ -158,14 +160,6 @@ class DGSDA(BaseGDA):
 
             self.log(epoch, epoch_loss, train_results)
 
-        #     early_stop = self.early_stop_check(self.dgsda, result=train_results, epoch=epoch)
-
-        #     if early_stop == "stop":
-        #         break
-        #     elif early_stop == "save":
-        #         torch.save(self.dgsda.state_dict(), self.best_model_dir)
-        # self.dgsda.load_state_dict(torch.load(self.best_model_dir))
-
         end_time = time.time()
         training_time = end_time - start_time
 
@@ -175,65 +169,7 @@ class DGSDA(BaseGDA):
         self.finish()
 
 
-
-    def process_graph(self, data):
-        """
-        Process the input graph data.
-
-        Parameters
-        ----------
-        data : torch_geometric.data.Data
-            Input graph data to be processed.
-
-        Notes
-        -----
-        This method is currently a placeholder as preprocessing is handled
-        through the NeighborLoader and DataLoader classes during training
-        and prediction phases.
-        """
-
     def predict(self, data, source=False):
-        """
-        Make predictions on input data.
-
-        Parameters
-        ----------
-        data : torch_geometric.data.Data
-            Input graph data.
-        source : bool, optional
-            Whether predicting on source domain. Default: ``False``.
-
-        Returns
-        -------
-        tuple
-            Contains:
-            
-            - logits : torch.Tensor
-                Model predictions.
-
-            - labels : torch.Tensor
-                True labels.
-        
-        Notes
-        -----
-        The prediction process:
-        
-        1. **Model Evaluation**: Sets the model to evaluation mode to
-           disable dropout and batch normalization updates.
-        
-        2. **Data Processing**: Uses the appropriate data loader (source
-           or target) based on the source parameter.
-        
-        3. **Inference**: Performs forward pass without gradient computation
-           for efficient inference.
-        
-        4. **Result Aggregation**: Concatenates predictions from multiple
-           batches if the data is processed in batches.
-        
-        The method automatically handles both source and target domain
-        prediction modes, with different processing pipelines for each.
-        """
-
         self.dgsda.eval()
 
         if source:
