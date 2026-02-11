@@ -19,6 +19,7 @@ from models.ours.dlit.dlit import DLIT
 from models.ours.simgda_cheb.simgda_cheb import SimGDACheb
 from models.ours.scgda.scgda import SCGDA
 from models.ours.dgsda_probe.dgsda_probe import DGSDAProbe
+from models.ours.scgda.spec_prop_gcn import SpecPropGCN
 
 from utils.expt_utils import print_string
 
@@ -48,6 +49,7 @@ def build_model(config: dict):
         "simgda_cheb": SimGDACheb,
         "scgda": SCGDA,
         "dgsdaprobe": DGSDAProbe,
+        "specpropgcn": SpecPropGCN,
     }
 
     if model_name in models_dict:

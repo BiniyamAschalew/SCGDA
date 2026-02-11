@@ -3,6 +3,8 @@ import os
 
 from utils.config_utils import build_config, load_config
 from utils.expt_utils import to_valid_dir
+import utils.debug_utils as du
+
 from run import run
 import pandas as pd
 
@@ -19,8 +21,7 @@ MODELS = {
     10:"structalign2", 11:"mlp", 12:"simmlp",
     13:"acdne", 14:"asn", 15:"adagcn",
     16:"dlit", 17:"simgda_cheb",
-    18:"scgda",
-    19:"dgsda_probe",
+    18:"scgda", 19:"dgsda_probe",
     }
 
 
@@ -45,19 +46,19 @@ DEVICE = "cuda:5"
 USE_TUNED = 0
 
 # BORROW = "simgda"
-BORROW = "dgsda"
+BORROW = "dgsda" # used only if use_tuned > 0
 
 USE_DEFAULT = False
 WANDB = False
 FROM_PYGDA = False
 
 id = {
-    "model": [2],
-    "dataset": [2],
+    "model": [16],
+    "dataset": [3],
     "source": [0],
     "target": [1],
 }
-notes = "dgsda_evaluation"
+notes = "check_scgda"
 
 combined_df = pd.DataFrame()
 cur_time = time.strftime("%m%d%H%M%S")

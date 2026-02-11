@@ -5,7 +5,7 @@ Key differences from DGSDA:
 - prop1 and prop2 can have different depths (Ks, Kt)
 - Supports both Bernstein and Chebyshev filters
 """
-
+import torch
 from torch import nn
 import torch.nn.functional as F
 
@@ -76,7 +76,6 @@ class SCGDABase(nn.Module):
         Passes ones signal through both filters and computes KL divergence
         between the resulting energy distributions.
         """
-        import torch
         
         # Create ones signals
         ones_s = torch.ones(num_nodes_s, 1, device=device)
@@ -86,7 +85,7 @@ class SCGDABase(nn.Module):
         energy_s = self.prop1(ones_s, source_edge_index)
         energy_t = self.prop2(ones_t, target_edge_index)
         
-        # Convert to probability distributions using softmax
+        # Convert to probability distributions using softmax (higher norm nodes <=> higher energy => higher prob)
         prob_s = F.softmax(energy_s.squeeze(-1), dim=0)
         prob_t = F.softmax(energy_t.squeeze(-1), dim=0)
         
