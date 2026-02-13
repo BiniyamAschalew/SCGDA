@@ -143,3 +143,13 @@ class DLIT(BaseGDA):
             labels_list.append(sampled_data.y)
 
         return torch.cat(logits_list, dim=0), torch.cat(labels_list, dim=0)
+
+"""
+
+one frozen filter ~ synthetic filter
+label based pseudo labels
+weighted depths gcn types
+
+
+
+"""
