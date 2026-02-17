@@ -3,10 +3,8 @@
 from __future__ import annotations
 
 import argparse
-import json
 from pathlib import Path
 from time import strftime
-from typing import Any
 
 import numpy as np
 import torch
@@ -14,7 +12,7 @@ import torch.nn.functional as F
 
 try:
     from .models import GNN, MLP
-except ImportError:  # when executing this file directly
+except ImportError:  # when running as a script
     from models import GNN, MLP
 
 
@@ -49,10 +47,9 @@ class DomainShiftTrainer:
         self.epochs = epochs
         self.snapshot_every = max(1, snapshot_every)
         self.mmd_weight = mmd_weight
-        self.seed = seed
+        self.optimizer = torch.optim.Adam(self.model.parameters(), lr=lr)
         self.device = torch.device(device)
         self.output_dir = output_dir
-        self.optimizer = torch.optim.Adam(self.model.parameters(), lr=lr)
 
         _set_seed(seed)
 
@@ -74,12 +71,8 @@ class DomainShiftTrainer:
         xt = torch.as_tensor(target_feat, dtype=torch.float32, device=self.device)
         yt = torch.as_tensor(target_labels, dtype=torch.long, device=self.device)
 
-        if self._needs_adj:
-            as_ = torch.as_tensor(source_adj, dtype=torch.float32, device=self.device)
-            at_ = torch.as_tensor(target_adj, dtype=torch.float32, device=self.device)
-        else:
-            as_ = None
-            at_ = None
+        as_ = torch.as_tensor(source_adj, dtype=torch.float32, device=self.device) if self._needs_adj else None
+        at_ = torch.as_tensor(target_adj, dtype=torch.float32, device=self.device) if self._needs_adj else None
 
         history: dict[str, list[float]] = {
             "epoch": [],
@@ -98,7 +91,7 @@ class DomainShiftTrainer:
         for epoch in range(self.epochs + 1):
             if epoch > 0:
                 self.model.train()
-                self.optimizer.zero_grad()
+                self.optimizer.zero_grad(set_to_none=True)
 
                 logits_s, z_s = self.model(xs, as_)
                 _, z_t = self.model(xt, at_)
@@ -115,13 +108,13 @@ class DomainShiftTrainer:
                 logits_s, z_s = self.model(xs, as_)
                 logits_t, z_t = self.model(xt, at_)
 
-                cls_loss = float(F.cross_entropy(logits_s, ys).item())
-                mmd_loss = float(self.model.mmd_loss(z_s, z_t).item())
-                total = cls_loss + self.mmd_weight * mmd_loss
+                cls_val = float(F.cross_entropy(logits_s, ys).item())
+                mmd_val = float(self.model.mmd_loss(z_s, z_t).item())
+                total = cls_val + self.mmd_weight * mmd_val
 
                 history["epoch"].append(epoch)
-                history["cls_loss"].append(cls_loss)
-                history["mmd_loss"].append(mmd_loss)
+                history["cls_loss"].append(cls_val)
+                history["mmd_loss"].append(mmd_val)
                 history["total_loss"].append(total)
                 history["source_acc"].append(_accuracy(logits_s, ys))
                 history["target_acc"].append(_accuracy(logits_t, yt))
@@ -130,7 +123,7 @@ class DomainShiftTrainer:
                     snapshot_epochs.append(epoch)
                     source_snaps.append(z_s.detach().cpu().numpy())
                     target_snaps.append(z_t.detach().cpu().numpy())
-                    mmd_snaps.append(mmd_loss)
+                    mmd_snaps.append(mmd_val)
 
         embedding_path = self.output_dir / f"{self.name}_embeddings.npz"
         history_path = self.output_dir / f"{self.name}_history.npz"
@@ -162,117 +155,19 @@ class DomainShiftTrainer:
         }
 
 
-def create_analysis_notebook(output_dir: Path, runs: list[dict[str, str]]) -> Path:
-    run_specs = [
-        {
-            "name": item["name"],
-            "embeddings": str(Path(item["embeddings"]).name),
-            "history": str(Path(item["history"]).name),
-        }
-        for item in runs
-    ]
-
-    notebook: dict[str, Any] = {
-        "cells": [
-            {
-                "cell_type": "markdown",
-                "metadata": {},
-                "source": [
-                    "# Structural-shift embedding progression\n",
-                    "Load the saved MLP and GNN checkpoints, plot MMD over training,\n",
-                    "and inspect source/target embedding trajectories.\n",
-                ],
-            },
-            {
-                "cell_type": "code",
-                "execution_count": None,
-                "metadata": {},
-                "outputs": [],
-                "source": [
-                    "import numpy as np\n",
-                    "import matplotlib.pyplot as plt\n",
-                    f"run_specs = {json.dumps(run_specs)}\n",
-                    "\n",
-                    "results = {}\n",
-                    "for spec in run_specs:\n",
-                    "    emb = np.load(spec['embeddings'])\n",
-                    "    hist = np.load(spec['history'])\n",
-                    "    results[spec['name']] = (emb, hist)\n",
-                    "\n",
-                    "print('Loaded:', ', '.join(results.keys()))\n",
-                ],
-            },
-            {
-                "cell_type": "code",
-                "execution_count": None,
-                "metadata": {},
-                "outputs": [],
-                "source": [
-                    "fig, ax = plt.subplots(figsize=(7, 4))\n",
-                    "for name, (_, hist) in results.items():\n",
-                    "    ax.plot(hist['epoch'], hist['mmd_loss'], marker='o', linewidth=1.3, label=f'{name.upper()}')\n",
-                    "ax.set_title('MMD progression over training')\n",
-                    "ax.set_xlabel('Epoch')\n",
-                    "ax.set_ylabel('MMD')\n",
-                    "ax.grid(alpha=0.3)\n",
-                    "ax.legend()\n",
-                    "plt.show()\n",
-                ],
-            },
-            {
-                "cell_type": "code",
-                "execution_count": None,
-                "metadata": {},
-                "outputs": [],
-                "source": [
-                    "def project2d(x):\n",
-                    "    x = x - x.mean(axis=0, keepdims=True)\n",
-                    "    if x.shape[1] <= 2:\n",
-                    "        return x[:, :2]\n",
-                    "    _, _, vh = np.linalg.svd(x, full_matrices=False)\n",
-                    "    return x @ vh[:2].T\n",
-                    "\n",
-                    "for name, (emb, hist) in results.items():\n",
-                    "    idx = np.linspace(0, len(emb['epochs']) - 1, num=min(6, len(emb['epochs'])), dtype=int)\n",
-                    "    fig, ax = plt.subplots(1, 2, figsize=(10, 4))\n",
-                    "    epochs = emb['epochs'].tolist()\n",
-                    "    for i in idx:\n",
-                    "        src = project2d(emb['source'][i])\n",
-                    "        tgt = project2d(emb['target'][i])\n",
-                    "        alpha = 0.25\n",
-                    "        if i == idx[-1]:\n",
-                    "            alpha = 1.0\n",
-                    "        ax[0].scatter(src[:, 0], src[:, 1], c=emb['source_labels'], alpha=alpha, cmap='tab10', s=16)\n",
-                    "        ax[1].scatter(tgt[:, 0], tgt[:, 1], c=emb['target_labels'], alpha=alpha, cmap='tab10', s=16)\n",
-                    "    ax[0].set_title(f'{name.upper()} source epochs: ' + ', '.join(map(str, [epochs[i] for i in idx])) )\n",
-                    "    ax[1].set_title(f'{name.upper()} target epochs: ' + ', '.join(map(str, [epochs[i] for i in idx])) )\n",
-                    "    for a in ax:\n",
-                    "        a.set_xticks([])\n",
-                    "        a.set_yticks([])\n",
-                    "    plt.suptitle(f'{name.upper()} embedding snapshots')\n",
-                    "    plt.tight_layout()\n",
-                    "    plt.show()\n",
-                ],
-            },
-        ],
-        "metadata": {
-            "kernelspec": {"display_name": "Python 3", "language": "python", "name": "python3"},
-            "language_info": {"name": "python", "mimetype": "text/x-python", "file_extension": ".py"},
-        },
-        "nbformat": 4,
-        "nbformat_minor": 5,
-    }
-
-    notebook_path = output_dir / "analysis.ipynb"
-    notebook_path.write_text(json.dumps(notebook, indent=2))
-    return notebook_path
-
-
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Structural-shift experiment")
-    parser.add_argument("--data-source", type=str, required=True)
-    parser.add_argument("--data-target", type=str, default=None)
-    parser.add_argument("--output-dir", type=str, default=f"__saved__/struct_shift/run_{strftime('%m%d_%H%M%S')}")
+    parser.add_argument(
+        "--data-dir",
+        type=str,
+        required=True,
+        help="Directory containing source.npz and target.npz",
+    )
+    parser.add_argument(
+        "--output-dir",
+        type=str,
+        default=f"__saved__/struct_shift/run_{strftime('%m%d_%H%M%S')}",
+    )
     parser.add_argument("--epochs", type=int, default=100)
     parser.add_argument("--snapshot-every", type=int, default=5)
     parser.add_argument("--hidden-dim", type=int, default=16)
@@ -288,8 +183,14 @@ def parse_args() -> argparse.Namespace:
 
 def main() -> None:
     args = parse_args()
-    source_path = Path(args.data_source)
-    target_path = Path(args.data_target) if args.data_target else source_path.parent / "target.npz"
+    data_dir = Path(args.data_dir)
+    source_path = data_dir / "source.npz"
+    target_path = data_dir / "target.npz"
+
+    if not source_path.exists():
+        raise FileNotFoundError(f"Missing source file: {source_path}")
+    if not target_path.exists():
+        raise FileNotFoundError(f"Missing target file: {target_path}")
 
     source_npz = np.load(source_path)
     target_npz = np.load(target_path)
@@ -344,11 +245,9 @@ def main() -> None:
         ).train(source_feat, source_adj, source_labels, target_feat, target_adj, target_labels)
     )
 
-    nb_path = create_analysis_notebook(output_dir, results)
     print(f"Saved embeddings in: {output_dir}")
     print(f"MLP embeddings: {results[0]['embeddings']}")
     print(f"GNN embeddings: {results[1]['embeddings']}")
-    print(f"Analysis notebook: {nb_path}")
 
 
 if __name__ == "__main__":
