@@ -51,7 +51,7 @@ WANDB = True
 FROM_PYGDA = False
 
 id = {
-    "model": [6],
+    "model": [2],
     "dataset": [1],
     "source": [0],
     "target": [1],

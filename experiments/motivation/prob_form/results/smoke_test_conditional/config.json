@@ -1,0 +1,21 @@
+{
+  "seed": 7,
+  "projection_seed": 17,
+  "n_classes": 3,
+  "n_per_class": 60,
+  "feature_dim": 10,
+  "class_sep": 4.0,
+  "source_std": 0.7,
+  "target_std_scale": 1.15,
+  "rotation_mix": 0.45,
+  "target_shift_scale": 1.2,
+  "class_shift_scale": 0.35,
+  "hidden_dim": 64,
+  "latent_dim": 6,
+  "epochs": 12,
+  "lr": 0.001,
+  "weight_decay": 0.0,
+  "snapshot_stride": 6,
+  "lambda_mmd": 0.8,
+  "device": "cpu"
+}
