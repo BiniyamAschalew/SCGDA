@@ -1,4 +1,4 @@
-"""Create synthetic graph data for structural shift experiments."""
+"""Create synthetic attributed graphs for the structural-shift study."""
 
 from __future__ import annotations
 
@@ -12,7 +12,7 @@ import numpy as np
 def _build_block_matrix(num_classes: int, edge_probs: Sequence[float]) -> np.ndarray:
     probs = np.asarray(edge_probs, dtype=np.float64)
     if probs.ndim != 1:
-        raise ValueError("edge_probs must be a 1-D sequence of probabilities.")
+        raise ValueError("edge_probs must be a 1-D sequence.")
     if probs.size == 0:
         raise ValueError("edge_probs must contain at least one value.")
 
@@ -21,21 +21,18 @@ def _build_block_matrix(num_classes: int, edge_probs: Sequence[float]) -> np.nda
 
     if probs.size == k:
         np.fill_diagonal(block, probs)
-        return np.clip(block, 0.0, 1.0)
+    elif probs.size == k * (k - 1) // 2:
+        tri = np.triu_indices(k, k=1)
+        block[tri] = probs
+        block[(tri[1], tri[0])] = probs
+    elif probs.size == k * k:
+        block = probs.reshape((k, k))
+    else:
+        raise ValueError(
+            "Unsupported edge_probs size. Use len = num_classes, num_classes*(num_classes-1)//2, or num_classes*num_classes."
+        )
 
-    if probs.size == k * (k - 1) // 2:
-        triu_idx = np.triu_indices(k, k=1)
-        block[triu_idx] = probs
-        block[(triu_idx[1], triu_idx[0])] = probs
-        return np.clip(block, 0.0, 1.0)
-
-    if probs.size == k * k:
-        return np.clip(probs.reshape((k, k)), 0.0, 1.0)
-
-    raise ValueError(
-        "Unsupported edge_probs size. Use len = num_classes, "
-        "num_classes*(num_classes-1)//2, or num_classes*num_classes."
-    )
+    return np.clip(block, 0.0, 1.0)
 
 
 def generate_synthetic_graph_data(
@@ -48,22 +45,17 @@ def generate_synthetic_graph_data(
     feat_mean: float = 0.0,
     feat_std: float = 1.0,
     seed: int = 7,
-) -> tuple[np.ndarray, np.ndarray]:
-    """Generate one attributed SBM-like graph (features, adjacency)."""
+) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+    """Return features, dense adjacency and class labels for one graph."""
 
     if num_nodes <= 1:
-        raise ValueError("num_nodes must be greater than 1.")
-    if num_node_features <= 0:
-        raise ValueError("num_node_features must be positive.")
-    if num_edges < 0:
-        raise ValueError("num_edges must be non-negative.")
-    if num_classes <= 0:
-        raise ValueError("num_classes must be positive.")
+        raise ValueError("num_nodes must be greater than 1")
 
     rng = np.random.default_rng(seed)
 
     class_sizes = np.full(num_classes, num_nodes // num_classes, dtype=np.int64)
     class_sizes[: num_nodes % num_classes] += 1
+
     node_classes = np.empty(num_nodes, dtype=np.int64)
     start = 0
     for cls, size in enumerate(class_sizes):
@@ -74,62 +66,85 @@ def generate_synthetic_graph_data(
     centers = rng.normal(size=(num_classes, num_node_features)).astype(np.float32)
     centers /= np.linalg.norm(centers, axis=1, keepdims=True) + 1e-12
     centers *= np.sqrt(num_node_features)
-    feature_noise = rng.normal(
-        loc=feat_mean, scale=feat_std, size=(num_nodes, num_node_features)
-    )
-    feat = centers[node_classes].astype(np.float32) + feature_noise.astype(np.float32)
+
+    feat = centers[node_classes] + rng.normal(
+        loc=feat_mean,
+        scale=feat_std,
+        size=(num_nodes, num_node_features),
+    ).astype(np.float32)
 
     block = _build_block_matrix(num_classes, edge_probs)
-    block = np.clip(block, 0.0, 1.0)
+    upper = np.triu_indices(num_nodes, k=1)
 
-    tri = np.triu_indices(num_nodes, k=1)
-    max_edges = tri[0].shape[0]
+    max_edges = upper[0].size
     if num_edges > max_edges:
         num_edges = max_edges
 
     if num_edges == 0:
         block = np.zeros_like(block)
-    elif num_edges > 0:
-        p_upper = block[node_classes[:, None], node_classes[None, :]][tri]
+    else:
+        p_upper = block[node_classes[:, None], node_classes[None, :]][upper]
         expected = float(p_upper.sum())
         if expected > 0:
             block = np.clip(block * (num_edges / expected), 0.0, 1.0)
 
-    p_matrix = block[node_classes[:, None], node_classes[None, :]]
-    rand = rng.random(size=p_matrix.shape)
-    upper = (rand < p_matrix) & np.triu(np.ones_like(p_matrix, dtype=bool), k=1)
-    adj = upper.astype(np.float32)
-    return feat, adj + adj.T
+    p = block[node_classes[:, None], node_classes[None, :]]
+    rnd = rng.random(size=p.shape)
+    adj = (rnd < p) & np.triu(np.ones_like(p, dtype=bool), k=1)
+    adj = (adj.astype(np.float32) + adj.astype(np.float32).T)
+
+    return feat, adj, node_classes
 
 
-if __name__ == "__main__":
-    time_stamp = time.strftime("%m%d_%H%M%S")
-    save_dir = Path(
-        f"/home/bini/codes/GDA/KDD/SCGDA/__saved__/synth_data/csbm_{time_stamp}"
-    )
-    save_dir.mkdir(parents=True, exist_ok=True)
+def save_shift_pair(
+    output_dir: str | Path,
+    src_args: dict,
+    tgt_args: dict,
+) -> tuple[Path, Path]:
+    """Generate and save source/target npz files and return their paths."""
 
-    shared_args = dict(
-        seed=7,
+    output_dir = Path(output_dir)
+    output_dir.mkdir(parents=True, exist_ok=True)
+
+    src_feat, src_adj, src_labels = generate_synthetic_graph_data(**src_args)
+    tgt_feat, tgt_adj, tgt_labels = generate_synthetic_graph_data(**tgt_args)
+
+    source_path = output_dir / "source.npz"
+    target_path = output_dir / "target.npz"
+
+    np.savez_compressed(source_path, feat=src_feat, adj=src_adj, labels=src_labels)
+    np.savez_compressed(target_path, feat=tgt_feat, adj=tgt_adj, labels=tgt_labels)
+
+    return source_path, target_path
+
+
+def main() -> None:
+    timestamp = time.strftime("%m%d_%H%M%S")
+    save_dir = Path(f"/home/bini/codes/GDA/KDD/SCGDA/__saved__/synth_data/csbm_{timestamp}")
+
+    shared = dict(
+        seed=42,
         num_nodes=100,
-        num_edges=500,
         num_node_features=16,
-        num_classes=3,
+        num_classes=2,
         feat_mean=0.0,
         feat_std=1.0,
     )
 
     src_args = {
-        **shared_args,
-        "edge_probs": [0.05, 0.01, 0.02],
+        **shared,
+        "num_edges": 1000,
+        "edge_probs": [0.05, 0.01, 0.01, 0.03],
     }
     tgt_args = {
-        **shared_args,
-        "edge_probs": [0.01, 0.05, 0.02],
+        **shared,
+        "num_edges": 500,
+        "edge_probs": [0.03, 0.02, 0.01, 0.04],
     }
 
-    src_feat, src_adj = generate_synthetic_graph_data(**src_args)
-    tgt_feat, tgt_adj = generate_synthetic_graph_data(**tgt_args)
+    save_shift_pair(save_dir, src_args=src_args, tgt_args=tgt_args)
+    print(f"Saved synthetic graphs to: {save_dir}")
 
-    np.savez_compressed(save_dir / "source.npz", feat=src_feat, adj=src_adj)
-    np.savez_compressed(save_dir / "target.npz", feat=tgt_feat, adj=tgt_adj)
+
+if __name__ == "__main__":
+    main()
