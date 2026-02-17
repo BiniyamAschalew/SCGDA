@@ -1,8 +1,9 @@
-"""Train MLP and GNN for structural-shift synthetic graphs and save embeddings."""
+"""Train GNN and SpectralGNN alignment models and save trajectories."""
 
 from __future__ import annotations
 
 import argparse
+import json
 from pathlib import Path
 from time import strftime
 
@@ -11,73 +12,207 @@ import torch
 import torch.nn.functional as F
 
 try:
-    from .models import GNN, MLP, SpectralGNN
-except ImportError:  # when running as a script
-    from models import GNN, MLP, SpectralGNN
+    from .models import GNN, SpectralGNN
+    from .utils import accuracy, ensure_dir, set_seed, to_tensor, train_test_split
+except ImportError:
+    from models import GNN, SpectralGNN
+    from utils import accuracy, ensure_dir, set_seed, to_tensor, train_test_split
 
 
-def _set_seed(seed: int) -> None:
-    torch.manual_seed(seed)
-    torch.cuda.manual_seed_all(seed)
-    np.random.seed(seed)
-    torch.backends.cudnn.deterministic = True
-    torch.backends.cudnn.benchmark = False
+MODEL_ALIASES = {"weight_align": "gnn", "filter_align": "spectral_gnn"}
+VALID_MODELS = {"gnn", "spectral_gnn"}
 
 
-def _train_test_split(num_nodes: int, train_ratio: float, *, seed: int) -> tuple[np.ndarray, np.ndarray]:
-    if not 0.0 < train_ratio < 1.0:
-        raise ValueError("train_ratio must be in (0, 1)")
-    if num_nodes < 2:
-        raise ValueError("Need at least 2 nodes to create train/test split")
+def parse_args() -> argparse.Namespace:
+    """Parse command-line arguments for model training."""
+    parser = argparse.ArgumentParser(description="Run structural-shift alignment experiments.")
+    parser.add_argument(
+        "--data-dir",
+        type=str,
+        default="/home/bini/codes/GDA/KDD/SCGDA/__saved__/synth_data/csbm_0217_221652",
+        help="Directory containing source.npz and target.npz.",
+    )
+    parser.add_argument(
+        "--output-dir",
+        type=str,
+        default=f"/home/bini/codes/GDA/KDD/SCGDA/__saved__/struct_shift/run_{strftime('%m%d_%H%M%S')}",
+        help="Directory where run artifacts are written.",
+    )
+    parser.add_argument("--models", type=str, default="gnn,spectral_gnn", help="Comma-separated model names.")
+    parser.add_argument("--modes", type=str, default="", help=argparse.SUPPRESS)
+    parser.add_argument("--epochs", type=int, default=150)
+    parser.add_argument("--snapshot-every", type=int, default=5)
+    parser.add_argument("--train-ratio", type=float, default=0.7)
+    parser.add_argument("--embed-dim", type=int, default=16)
+    parser.add_argument("--filter-order", type=int, default=2)
+    parser.add_argument("--dropout", type=float, default=0.2)
+    parser.add_argument("--mmd-weight", type=float, default=1.0)
+    parser.add_argument("--align-weight", type=float, default=1.0)
+    parser.add_argument("--lr", type=float, default=1e-3)
+    parser.add_argument("--seed", type=int, default=7)
+    parser.add_argument("--device", type=str, default="cpu")
+    return parser.parse_args()
 
-    n_train = int(np.floor(num_nodes * train_ratio))
-    n_train = int(np.clip(n_train, 1, num_nodes - 1))
 
-    rng = np.random.default_rng(seed)
-    idx = np.arange(num_nodes)
-    rng.shuffle(idx)
+def parse_models(raw: str) -> list[str]:
+    """Parse and validate requested model names."""
+    models: list[str] = []
+    for token in raw.split(","):
+        key = token.strip().lower()
+        if not key:
+            continue
+        key = MODEL_ALIASES.get(key, key)
+        if key not in VALID_MODELS:
+            raise ValueError(f"Unknown model: {token.strip()}")
+        if key not in models:
+            models.append(key)
+    if not models:
+        raise ValueError("At least one model is required.")
+    return models
 
-    return idx[:n_train], idx[n_train:]
+
+def load_pair(data_dir: str | Path) -> tuple[np.lib.npyio.NpzFile, np.lib.npyio.NpzFile]:
+    """Load source and target npz files from a directory."""
+    root = Path(data_dir)
+    source_path = root / "source.npz"
+    target_path = root / "target.npz"
+    if not source_path.exists():
+        raise FileNotFoundError(f"Missing source file: {source_path}")
+    if not target_path.exists():
+        raise FileNotFoundError(f"Missing target file: {target_path}")
+    return np.load(source_path), np.load(target_path)
 
 
-def _accuracy(logits: torch.Tensor, labels: torch.Tensor) -> float:
-    return float((logits.argmax(dim=1) == labels).float().mean().item())
+def resolve_splits(
+    source_npz: np.lib.npyio.NpzFile,
+    target_npz: np.lib.npyio.NpzFile,
+    train_ratio: float,
+    seed: int,
+) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
+    """Return train/test indices for source and target domains."""
+    if "train_idx" in source_npz.files and "test_idx" in source_npz.files:
+        src_train = source_npz["train_idx"].astype(np.int64)
+        src_test = source_npz["test_idx"].astype(np.int64)
+    else:
+        src_train, src_test = train_test_split(source_npz["feat"].shape[0], train_ratio, seed=seed)
+
+    if "train_idx" in target_npz.files and "test_idx" in target_npz.files:
+        tgt_train = target_npz["train_idx"].astype(np.int64)
+        tgt_test = target_npz["test_idx"].astype(np.int64)
+    elif target_npz["feat"].shape[0] == source_npz["feat"].shape[0]:
+        tgt_train, tgt_test = src_train.copy(), src_test.copy()
+    else:
+        tgt_train, tgt_test = train_test_split(target_npz["feat"].shape[0], train_ratio, seed=seed + 1)
+    return src_train, src_test, tgt_train, tgt_test
 
 
-class DomainShiftTrainer:
+def build_model(name: str, *, input_dim: int, embed_dim: int, num_classes: int, filter_order: int, dropout: float) -> torch.nn.Module:
+    """Construct one requested model with its default alignment target."""
+    if name == "gnn":
+        return GNN(
+            input_dim=input_dim,
+            embed_dim=embed_dim,
+            num_classes=num_classes,
+            dropout=dropout,
+            align_on="weight",
+            add_self_loop=True,
+        )
+    if name == "spectral_gnn":
+        return SpectralGNN(
+            input_dim=input_dim,
+            embed_dim=embed_dim,
+            num_classes=num_classes,
+            filter_order=filter_order,
+            dropout=dropout,
+            align_on="filter",
+            add_self_loop=True,
+        )
+    raise ValueError(f"Unknown model: {name}")
+
+
+class Trainer:
+    """Train one model and save history and embedding snapshots."""
+
     def __init__(
         self,
+        *,
         name: str,
         model: torch.nn.Module,
-        *,
         epochs: int,
         snapshot_every: int,
         lr: float,
         mmd_weight: float,
-        seed: int,
+        align_weight: float,
         device: str,
         output_dir: Path,
     ) -> None:
+        """Initialize trainer state and optimizer."""
         self.name = name
         self.model = model.to(device)
-        self.epochs = epochs
-        self.snapshot_every = max(1, snapshot_every)
-        self.mmd_weight = mmd_weight
-        self.optimizer = torch.optim.Adam(self.model.parameters(), lr=lr)
+        self.epochs = int(epochs)
+        self.snapshot_every = max(1, int(snapshot_every))
+        self.mmd_weight = float(mmd_weight)
+        self.align_weight = float(align_weight)
         self.device = torch.device(device)
         self.output_dir = output_dir
-        self._needs_adj = bool(getattr(self.model, "needs_adjacency", False))
+        self.optimizer = torch.optim.Adam(self.model.parameters(), lr=lr)
 
-        _set_seed(seed)
+    def _to_device(
+        self,
+        source_feat: np.ndarray,
+        source_adj: np.ndarray,
+        source_labels: np.ndarray,
+        source_train_idx: np.ndarray,
+        source_test_idx: np.ndarray,
+        target_feat: np.ndarray,
+        target_adj: np.ndarray,
+        target_labels: np.ndarray,
+        target_train_idx: np.ndarray,
+        target_test_idx: np.ndarray,
+    ) -> dict[str, torch.Tensor]:
+        """Move arrays for one run to the configured torch device."""
+        return {
+            "xs": to_tensor(source_feat, dtype=torch.float32, device=self.device),
+            "as_": to_tensor(source_adj, dtype=torch.float32, device=self.device),
+            "ys": to_tensor(source_labels, dtype=torch.long, device=self.device),
+            "s_train": to_tensor(source_train_idx, dtype=torch.long, device=self.device),
+            "s_test": to_tensor(source_test_idx, dtype=torch.long, device=self.device),
+            "xt": to_tensor(target_feat, dtype=torch.float32, device=self.device),
+            "at_": to_tensor(target_adj, dtype=torch.float32, device=self.device),
+            "yt": to_tensor(target_labels, dtype=torch.long, device=self.device),
+            "t_train": to_tensor(target_train_idx, dtype=torch.long, device=self.device),
+            "t_test": to_tensor(target_test_idx, dtype=torch.long, device=self.device),
+        }
 
-    @staticmethod
-    def _to_tensor(data: np.ndarray | None, dtype: torch.dtype, device: torch.device) -> torch.Tensor | None:
-        if data is None:
-            return None
-        return torch.as_tensor(data, dtype=dtype, device=device)
+    def _evaluate(self, out: dict[str, torch.Tensor], data: dict[str, torch.Tensor]) -> dict[str, float]:
+        """Compute scalar losses and accuracies from one forward pass."""
+        src_logits = out["source_logits"]
+        tgt_logits = out["target_logits"]
+        src_embed = out["source_embed"]
+        tgt_embed = out["target_embed"]
 
-    def _forward(self, x: torch.Tensor, adj: torch.Tensor | None) -> tuple[torch.Tensor, torch.Tensor]:
-        return self.model(x, adj)
+        cls = float(F.cross_entropy(src_logits[data["s_train"]], data["ys"][data["s_train"]]).item())
+        mmd_train = float(
+            self.model.embedding_alignment_loss(src_embed[data["s_train"]], tgt_embed[data["t_train"]]).item()
+        )
+        mmd_test = float(
+            self.model.embedding_alignment_loss(src_embed[data["s_test"]], tgt_embed[data["t_test"]]).item()
+        )
+        align = float(self.model.parameter_alignment_loss().item())
+        total = cls + self.mmd_weight * mmd_train + self.align_weight * align
+        return {
+            "cls_loss": cls,
+            "mmd_train": mmd_train,
+            "mmd_test": mmd_test,
+            "alignment_loss": align,
+            "total_loss": total,
+            "source_train_acc": accuracy(src_logits[data["s_train"]], data["ys"][data["s_train"]]),
+            "source_test_acc": accuracy(src_logits[data["s_test"]], data["ys"][data["s_test"]]),
+            "target_train_acc": accuracy(tgt_logits[data["t_train"]], data["yt"][data["t_train"]]),
+            "target_test_acc": accuracy(tgt_logits[data["t_test"]], data["yt"][data["t_test"]]),
+            "filter_gap": float(self.model.filter_gap().item()),
+            "weight_gap": float(self.model.weight_gap().item()),
+        }
 
     def train(
         self,
@@ -92,254 +227,193 @@ class DomainShiftTrainer:
         target_train_idx: np.ndarray,
         target_test_idx: np.ndarray,
     ) -> dict[str, str]:
-        xs = torch.as_tensor(source_feat, dtype=torch.float32, device=self.device)
-        ys = torch.as_tensor(source_labels, dtype=torch.long, device=self.device)
-        xt = torch.as_tensor(target_feat, dtype=torch.float32, device=self.device)
-        yt = torch.as_tensor(target_labels, dtype=torch.long, device=self.device)
-
-        as_ = self._to_tensor(source_adj, torch.float32, self.device) if self._needs_adj else None
-        at_ = self._to_tensor(target_adj, torch.float32, self.device) if self._needs_adj else None
-
-        s_train_idx = torch.as_tensor(source_train_idx, device=self.device, dtype=torch.long)
-        s_test_idx = torch.as_tensor(source_test_idx, device=self.device, dtype=torch.long)
-        t_train_idx = torch.as_tensor(target_train_idx, device=self.device, dtype=torch.long)
-        t_test_idx = torch.as_tensor(target_test_idx, device=self.device, dtype=torch.long)
+        """Run epochs and persist history and embeddings."""
+        data = self._to_device(
+            source_feat,
+            source_adj,
+            source_labels,
+            source_train_idx,
+            source_test_idx,
+            target_feat,
+            target_adj,
+            target_labels,
+            target_train_idx,
+            target_test_idx,
+        )
 
         history: dict[str, list[float]] = {
             "epoch": [],
             "cls_loss": [],
             "mmd_train": [],
             "mmd_test": [],
+            "alignment_loss": [],
             "total_loss": [],
             "source_train_acc": [],
             "source_test_acc": [],
             "target_train_acc": [],
             "target_test_acc": [],
+            "filter_gap": [],
+            "weight_gap": [],
         }
-
-        snapshot_epochs: list[int] = []
-        source_train_snaps: list[np.ndarray] = []
-        source_test_snaps: list[np.ndarray] = []
-        target_train_snaps: list[np.ndarray] = []
-        target_test_snaps: list[np.ndarray] = []
-        mmd_train_snaps: list[float] = []
-        mmd_test_snaps: list[float] = []
-        spectral_weight_snaps: list[np.ndarray] = []
+        snapshots: dict[str, list[np.ndarray | float | int]] = {
+            "epochs": [],
+            "source_train": [],
+            "source_test": [],
+            "target_train": [],
+            "target_test": [],
+            "source_filter_weights": [],
+            "target_filter_weights": [],
+            "mmd_train": [],
+            "mmd_test": [],
+            "alignment_loss": [],
+        }
 
         for epoch in range(self.epochs + 1):
             if epoch > 0:
                 self.model.train()
                 self.optimizer.zero_grad(set_to_none=True)
-
-                logits_s, z_s = self._forward(xs, as_)
-                logits_t, z_t = self._forward(xt, at_)
-
-                cls_loss = F.cross_entropy(logits_s[s_train_idx], ys[s_train_idx])
-                mmd_train = self.model.mmd_loss(z_s[s_train_idx], z_t[t_train_idx])
-                total_loss = cls_loss + self.mmd_weight * mmd_train
-
+                out = self.model(data["xs"], data["as_"], data["xt"], data["at_"])
+                cls_loss = F.cross_entropy(out["source_logits"][data["s_train"]], data["ys"][data["s_train"]])
+                mmd_loss = self.model.embedding_alignment_loss(
+                    out["source_embed"][data["s_train"]], out["target_embed"][data["t_train"]]
+                )
+                align_loss = self.model.parameter_alignment_loss()
+                total_loss = cls_loss + self.mmd_weight * mmd_loss + self.align_weight * align_loss
                 total_loss.backward()
                 self.optimizer.step()
 
             self.model.eval()
             with torch.no_grad():
-                logits_s, z_s = self._forward(xs, as_)
-                logits_t, z_t = self._forward(xt, at_)
-
-                logits_s_train = logits_s[s_train_idx]
-                logits_s_test = logits_s[s_test_idx]
-                logits_t_train = logits_t[t_train_idx]
-                logits_t_test = logits_t[t_test_idx]
-
-                z_s_train = z_s[s_train_idx]
-                z_s_test = z_s[s_test_idx]
-                z_t_train = z_t[t_train_idx]
-                z_t_test = z_t[t_test_idx]
-
-                cls_val = float(F.cross_entropy(logits_s_train, ys[s_train_idx]).item())
-                mmd_train_val = float(self.model.mmd_loss(z_s_train, z_t_train).item())
-                mmd_test_val = float(self.model.mmd_loss(z_s_test, z_t_test).item())
-                total = cls_val + self.mmd_weight * mmd_train_val
+                out = self.model(data["xs"], data["as_"], data["xt"], data["at_"])
+                metrics = self._evaluate(out, data)
 
                 history["epoch"].append(epoch)
-                history["cls_loss"].append(cls_val)
-                history["mmd_train"].append(mmd_train_val)
-                history["mmd_test"].append(mmd_test_val)
-                history["total_loss"].append(total)
-                history["source_train_acc"].append(_accuracy(logits_s_train, ys[s_train_idx]))
-                history["source_test_acc"].append(_accuracy(logits_s_test, ys[s_test_idx]))
-                history["target_train_acc"].append(_accuracy(logits_t_train, yt[t_train_idx]))
-                history["target_test_acc"].append(_accuracy(logits_t_test, yt[t_test_idx]))
+                for key in metrics:
+                    history[key].append(metrics[key])
 
                 if epoch == 0 or epoch % self.snapshot_every == 0:
-                    snapshot_epochs.append(epoch)
-                    source_train_snaps.append(z_s_train.detach().cpu().numpy())
-                    source_test_snaps.append(z_s_test.detach().cpu().numpy())
-                    target_train_snaps.append(z_t_train.detach().cpu().numpy())
-                    target_test_snaps.append(z_t_test.detach().cpu().numpy())
-                    mmd_train_snaps.append(mmd_train_val)
-                    mmd_test_snaps.append(mmd_test_val)
-                    if hasattr(self.model, "spectral_logits"):
-                        spectral_weight_snaps.append(
-                            F.softmax(self.model.spectral_logits.detach(), dim=0).cpu().numpy()
-                        )
+                    src_w, tgt_w = self.model.filter_weights()
+                    snapshots["epochs"].append(epoch)
+                    snapshots["source_train"].append(out["source_embed"][data["s_train"]].cpu().numpy())
+                    snapshots["source_test"].append(out["source_embed"][data["s_test"]].cpu().numpy())
+                    snapshots["target_train"].append(out["target_embed"][data["t_train"]].cpu().numpy())
+                    snapshots["target_test"].append(out["target_embed"][data["t_test"]].cpu().numpy())
+                    snapshots["source_filter_weights"].append(src_w.detach().cpu().numpy())
+                    snapshots["target_filter_weights"].append(tgt_w.detach().cpu().numpy())
+                    snapshots["mmd_train"].append(metrics["mmd_train"])
+                    snapshots["mmd_test"].append(metrics["mmd_test"])
+                    snapshots["alignment_loss"].append(metrics["alignment_loss"])
 
-        embedding_path = self.output_dir / f"{self.name}_embeddings.npz"
         history_path = self.output_dir / f"{self.name}_history.npz"
-        embedding_payload: dict[str, np.ndarray | str] = {
-            "epochs": np.array(snapshot_epochs, dtype=np.int64),
-            "source_train": np.asarray(source_train_snaps, dtype=np.float32),
-            "source_test": np.asarray(source_test_snaps, dtype=np.float32),
-            "target_train": np.asarray(target_train_snaps, dtype=np.float32),
-            "target_test": np.asarray(target_test_snaps, dtype=np.float32),
-            "source_train_labels": source_labels[source_train_idx],
-            "source_test_labels": source_labels[source_test_idx],
-            "target_train_labels": target_labels[target_train_idx],
-            "target_test_labels": target_labels[target_test_idx],
-            "source_train_idx": source_train_idx,
-            "source_test_idx": source_test_idx,
-            "target_train_idx": target_train_idx,
-            "target_test_idx": target_test_idx,
-            "mmd_train": np.asarray(mmd_train_snaps, dtype=np.float32),
-            "mmd_test": np.asarray(mmd_test_snaps, dtype=np.float32),
-        }
-        if spectral_weight_snaps:
-            embedding_payload["spectral_layer_weights"] = np.asarray(spectral_weight_snaps, dtype=np.float32)
-
-        np.savez_compressed(embedding_path, **embedding_payload)
-
+        embeddings_path = self.output_dir / f"{self.name}_embeddings.npz"
         np.savez_compressed(
             history_path,
-            epoch=np.array(history["epoch"], dtype=np.int64),
-            cls_loss=np.array(history["cls_loss"], dtype=np.float32),
-            mmd_train=np.array(history["mmd_train"], dtype=np.float32),
-            mmd_test=np.array(history["mmd_test"], dtype=np.float32),
-            total_loss=np.array(history["total_loss"], dtype=np.float32),
-            source_train_acc=np.array(history["source_train_acc"], dtype=np.float32),
-            source_test_acc=np.array(history["source_test_acc"], dtype=np.float32),
-            target_train_acc=np.array(history["target_train_acc"], dtype=np.float32),
-            target_test_acc=np.array(history["target_test_acc"], dtype=np.float32),
+            epoch=np.asarray(history["epoch"], dtype=np.int64),
+            cls_loss=np.asarray(history["cls_loss"], dtype=np.float32),
+            mmd_train=np.asarray(history["mmd_train"], dtype=np.float32),
+            mmd_test=np.asarray(history["mmd_test"], dtype=np.float32),
+            alignment_loss=np.asarray(history["alignment_loss"], dtype=np.float32),
+            total_loss=np.asarray(history["total_loss"], dtype=np.float32),
+            source_train_acc=np.asarray(history["source_train_acc"], dtype=np.float32),
+            source_test_acc=np.asarray(history["source_test_acc"], dtype=np.float32),
+            target_train_acc=np.asarray(history["target_train_acc"], dtype=np.float32),
+            target_test_acc=np.asarray(history["target_test_acc"], dtype=np.float32),
+            filter_gap=np.asarray(history["filter_gap"], dtype=np.float32),
+            weight_gap=np.asarray(history["weight_gap"], dtype=np.float32),
         )
-
-        return {
-            "name": self.name,
-            "embeddings": str(embedding_path),
-            "history": str(history_path),
-        }
-
-
-def parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description="Structural-shift experiment")
-    parser.add_argument(
-        "--data-dir",
-        type=str,
-        default="/home/bini/codes/GDA/KDD/SCGDA/__saved__/synth_data/csbm_0217_221652",
-        help="Directory containing source.npz and target.npz",
-    )
-    parser.add_argument(
-        "--output-dir",
-        type=str,
-        default=f"/home/bini/codes/GDA/KDD/SCGDA/__saved__/struct_shift/run_{strftime('%m%d_%H%M%S')}",
-    )
-    parser.add_argument("--epochs", type=int, default=100)
-    parser.add_argument("--snapshot-every", type=int, default=5)
-    parser.add_argument("--train-ratio", type=float, default=0.7)
-    parser.add_argument("--hidden-dim", type=int, default=16)
-    parser.add_argument("--output-dim", type=int, default=16)
-    parser.add_argument("--num-layers", type=int, default=2)
-    parser.add_argument("--dropout", type=float, default=0.3)
-    parser.add_argument("--mmd-weight", type=float, default=1.0)
-    parser.add_argument("--lr", type=float, default=1e-3)
-    parser.add_argument("--seed", type=int, default=7)
-    parser.add_argument("--device", type=str, default="cpu")
-    return parser.parse_args()
+        np.savez_compressed(
+            embeddings_path,
+            epochs=np.asarray(snapshots["epochs"], dtype=np.int64),
+            source_train=np.asarray(snapshots["source_train"], dtype=np.float32),
+            source_test=np.asarray(snapshots["source_test"], dtype=np.float32),
+            target_train=np.asarray(snapshots["target_train"], dtype=np.float32),
+            target_test=np.asarray(snapshots["target_test"], dtype=np.float32),
+            source_train_labels=source_labels[source_train_idx],
+            source_test_labels=source_labels[source_test_idx],
+            target_train_labels=target_labels[target_train_idx],
+            target_test_labels=target_labels[target_test_idx],
+            source_train_idx=source_train_idx,
+            source_test_idx=source_test_idx,
+            target_train_idx=target_train_idx,
+            target_test_idx=target_test_idx,
+            source_filter_weights=np.asarray(snapshots["source_filter_weights"], dtype=np.float32),
+            target_filter_weights=np.asarray(snapshots["target_filter_weights"], dtype=np.float32),
+            mmd_train=np.asarray(snapshots["mmd_train"], dtype=np.float32),
+            mmd_test=np.asarray(snapshots["mmd_test"], dtype=np.float32),
+            alignment_loss=np.asarray(snapshots["alignment_loss"], dtype=np.float32),
+        )
+        return {"name": self.name, "history": str(history_path), "embeddings": str(embeddings_path)}
 
 
 def main() -> None:
+    """Run requested models and save one summary file."""
     args = parse_args()
-    data_dir = Path(args.data_dir)
-    source_path = data_dir / "source.npz"
-    target_path = data_dir / "target.npz"
+    requested = args.models if not args.modes else args.modes
+    models = parse_models(requested)
 
-    if not source_path.exists():
-        raise FileNotFoundError(f"Missing source file: {source_path}")
-    if not target_path.exists():
-        raise FileNotFoundError(f"Missing target file: {target_path}")
-
-    if not 0.0 < args.train_ratio < 1.0:
-        raise ValueError("train-ratio must be in (0, 1)")
-
-    source_npz = np.load(source_path)
-    target_npz = np.load(target_path)
-
-    source_feat = source_npz["feat"]
-    source_adj = source_npz["adj"]
-    source_labels = source_npz["labels"]
-
-    target_feat = target_npz["feat"]
-    target_adj = target_npz["adj"]
-    target_labels = target_npz["labels"]
-
-    source_train_idx, source_test_idx = _train_test_split(
-        num_nodes=source_feat.shape[0],
+    source_npz, target_npz = load_pair(args.data_dir)
+    source_train_idx, source_test_idx, target_train_idx, target_test_idx = resolve_splits(
+        source_npz,
+        target_npz,
         train_ratio=args.train_ratio,
         seed=args.seed,
     )
-    target_train_idx, target_test_idx = _train_test_split(
-        num_nodes=target_feat.shape[0],
-        train_ratio=args.train_ratio,
-        seed=args.seed + 1,
-    )
 
+    source_feat = source_npz["feat"].astype(np.float32)
+    source_adj = source_npz["adj"].astype(np.float32)
+    source_labels = source_npz["labels"].astype(np.int64)
+    target_feat = target_npz["feat"].astype(np.float32)
+    target_adj = target_npz["adj"].astype(np.float32)
+    target_labels = target_npz["labels"].astype(np.int64)
+    if source_feat.shape[1] != target_feat.shape[1]:
+        raise ValueError("Source and target feature dimensions must match.")
+
+    output_dir = ensure_dir(args.output_dir)
     num_classes = int(max(source_labels.max(), target_labels.max()) + 1)
-    model_kwargs = {
-        "input_dim": int(source_feat.shape[1]),
-        "hidden_dim": args.hidden_dim,
-        "output_dim": args.output_dim,
-        "num_classes": num_classes,
-        "num_layers": args.num_layers,
-        "dropout": args.dropout,
-    }
-
-    output_dir = Path(args.output_dir)
-    output_dir.mkdir(parents=True, exist_ok=True)
 
     results: list[dict[str, str]] = []
-    model_specs = [
-        ("mlp", MLP(**model_kwargs)),
-        ("gnn", GNN(**model_kwargs, add_self_loop=True)),
-        ("spectral_gnn", SpectralGNN(**{**model_kwargs, "num_layers": 3})),
-    ]
-
-    for i, (name, model) in enumerate(model_specs):
-        results.append(
-            DomainShiftTrainer(
-                name=name,
-                model=model,
-                epochs=args.epochs,
-                snapshot_every=args.snapshot_every,
-                lr=args.lr,
-                mmd_weight=args.mmd_weight,
-                seed=args.seed + i,
-                device=args.device,
-                output_dir=output_dir,
-            ).train(
-                source_feat,
-                source_adj,
-                source_labels,
-                source_train_idx,
-                source_test_idx,
-                target_feat,
-                target_adj,
-                target_labels,
-                target_train_idx,
-                target_test_idx,
-            )
+    for i, name in enumerate(models):
+        set_seed(args.seed + i)
+        model = build_model(
+            name=name,
+            input_dim=int(source_feat.shape[1]),
+            embed_dim=args.embed_dim,
+            num_classes=num_classes,
+            filter_order=args.filter_order,
+            dropout=args.dropout,
         )
+        trainer = Trainer(
+            name=name,
+            model=model,
+            epochs=args.epochs,
+            snapshot_every=args.snapshot_every,
+            lr=args.lr,
+            mmd_weight=args.mmd_weight,
+            align_weight=args.align_weight,
+            device=args.device,
+            output_dir=output_dir,
+        )
+        result = trainer.train(
+            source_feat=source_feat,
+            source_adj=source_adj,
+            source_labels=source_labels,
+            source_train_idx=source_train_idx,
+            source_test_idx=source_test_idx,
+            target_feat=target_feat,
+            target_adj=target_adj,
+            target_labels=target_labels,
+            target_train_idx=target_train_idx,
+            target_test_idx=target_test_idx,
+        )
+        results.append(result)
+        print(f"{name}: history={result['history']}")
+        print(f"{name}: embeddings={result['embeddings']}")
 
-    for item in results:
-        print(f"{item['name']} embeddings: {item['embeddings']}")
-    print(f"Saved embeddings in: {output_dir}")
+    summary = {"args": vars(args), "models": models, "results": results}
+    summary_path = Path(output_dir) / "summary.json"
+    summary_path.write_text(json.dumps(summary, indent=2))
+    print(f"Saved run summary: {summary_path}")
+    print(f"Saved run directory: {output_dir}")
 
 
 if __name__ == "__main__":
