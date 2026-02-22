@@ -47,7 +47,7 @@ USE_TUNED = 0
 BORROW = None
 
 USE_DEFAULT = False
-WANDB = True
+WANDB = False
 FROM_PYGDA = False
 
 id = {
