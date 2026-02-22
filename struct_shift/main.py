@@ -29,7 +29,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--data-dir",
         type=str,
-        default="/home/bini/codes/GDA/KDD/SCGDA/__saved__/synth_data/csbm_0217_221652",
+        default="/home/bini/codes/GDA/KDD/SCGDA/__saved__/synth_data/csbm_0217_233042",
         help="Directory containing source.npz and target.npz.",
     )
     parser.add_argument(
