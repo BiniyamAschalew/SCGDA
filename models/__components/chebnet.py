@@ -55,6 +55,7 @@ class ChebNetBase(nn.Module):
             self.cls = nn.Linear(self.hid_dim, self.num_classes)
         else:
             raise ValueError(f"Invalid mode: {self.mode}")
+        
 
     def _apply_cheb(self, conv, x, edge_index, edge_weight=None, lambda_max=None):
         if lambda_max is None:
@@ -85,6 +86,43 @@ class ChebNetBase(nn.Module):
         else:
             x = self.cls(x)
         return x
+    
+    def filter_bottleneck(self, x, edge_index, edge_weight=None, batch=None, lambda_max=None):
+        """Pass the features through the layers, without the weight matrix, only the propagation with 
+        the filter coefficients. This is used for the warmup with MMD on the filter outputs."""
+
+        for i, conv in enumerate(self.convs):
+            norm_edge_index, norm = conv.__norm__(
+                edge_index,
+                x.size(conv.node_dim),
+                edge_weight,
+                conv.normalization,
+                lambda_max,
+                dtype=x.dtype,
+                batch=batch,
+            )
+
+            tx_0 = x
+            tx_1 = tx_0  # dummy to match ChebConv recurrence structure
+            out = tx_0
+
+            if len(conv.lins) > 1:
+                tx_1 = conv.propagate(norm_edge_index, x=tx_0, norm=norm)
+                out = out + tx_1
+
+            for _ in conv.lins[2:]:
+                tx_2 = conv.propagate(norm_edge_index, x=tx_1, norm=norm)
+                tx_2 = 2.0 * tx_2 - tx_0
+                out = out + tx_2
+                tx_0, tx_1 = tx_1, tx_2
+
+            x = out
+            if i < len(self.convs) - 1:
+                x = self.act(x)
+                x = F.dropout(x, p=self.dropout, training=self.training)
+
+        return x
+
 
     def filter_parameters(self):
         params = []

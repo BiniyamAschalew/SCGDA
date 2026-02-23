@@ -47,11 +47,11 @@ USE_TUNED = 0
 BORROW = None
 
 USE_DEFAULT = False
-WANDB = True
+WANDB = False
 FROM_PYGDA = False
 
 id = {
-    "model": [2],
+    "model": [0, 2, 9],
     "dataset": [1],
     "source": [0],
     "target": [1],
@@ -59,7 +59,7 @@ id = {
 notes = "dgsda_evaluation"
 
 combined_df = pd.DataFrame()
-cur_time = time.strftime("%d%H%M%S")
+cur_time = time.strftime("%m%d%H%M%S")
 
 for repeat in range(REPEATS):
     for mid in id["model"]:

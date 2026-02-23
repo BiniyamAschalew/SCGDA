@@ -1,4 +1,4 @@
-"""Bernstein polynomial-based filter"""
+"""Monomial filter: weighted sum of powers of the adjacency matrix"""
 
 import torch
 from torch import nn
@@ -6,18 +6,16 @@ import torch.nn.functional as F
 from torch_geometric.nn.conv import MessagePassing
 from torch_geometric.utils import add_self_loops
 from torch_geometric.utils import get_laplacian
-from scipy.special import comb
 
 
-class BernProp(MessagePassing):
-   
+class MonomialProp(MessagePassing):
+
     def __init__(self, K, is_source_domain=True, bias=True, **kwargs):
-        super(BernProp, self).__init__(aggr='add', **kwargs)
+        super(MonomialProp, self).__init__(aggr='add', **kwargs)
 
         self.K = K
         self.is_source_domain = is_source_domain
         self.cached_terms = None
-        self.cached_coefs = None
         self.temp = nn.Parameter(torch.Tensor(self.K + 1), requires_grad=is_source_domain)
         self.reset_parameters()
 
@@ -34,7 +32,7 @@ class BernProp(MessagePassing):
         H = 0
 
         for k in range(self.K + 1):
-            H = H + TEMP[k] * self.cached_coefs[k] * self.cached_terms[k]
+            H = H + TEMP[k] * self.cached_terms[k]
 
         return H
 
@@ -52,22 +50,11 @@ class BernProp(MessagePassing):
             x = self.propagate(edge_index2, x=x, norm=norm2, size=None)
             tmp.append(x)
 
-        out = (comb(self.K, 0) / (2 ** self.K)) * TEMP[0] * tmp[self.K]
+        out = torch.empty_like(x)
+        for k in range(self.K + 1):
+            out = out + TEMP[k] * tmp[k]
 
-        for i in range(self.K):
-            x = tmp[self.K - i - 1]
-            x = self.propagate(edge_index1, x=x, norm=norm1, size=None)
-            for j in range(i):
-                x = self.propagate(edge_index1, x=x, norm=norm1, size=None)
-
-            out = out + (comb(self.K, i + 1) / (2 ** self.K)) * TEMP[i + 1] * x
         return out
+    
 
-    def message(self, x_j, norm):
-
-        return norm.view(-1, 1) * x_j
-
-    def __repr__(self):
-
-        return '{}(K={}, temp={})'.format(self.__class__.__name__, self.K, self.temp)
-
+    

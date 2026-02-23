@@ -8,7 +8,11 @@ from models.__components.chebnet import ChebNetBase
 
 from utils.train_utils.mmd import MMD
 
-
+"""SimGDA with spectral filters (Chebyshev or Bernstein)
+and optional warmup for filter alignment using MMD on the filter outputs 
+with dummy features. The warmup can be configured to train only the 
+filter parameters while keeping the rest of the model frozen, 
+and can use different types of dummy feature initializations."""
 
 class SimGDASpectral(BaseGDA):
 
