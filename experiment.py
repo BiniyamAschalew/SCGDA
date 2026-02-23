@@ -39,7 +39,7 @@ role_type = ROLE_TYPES[2]
 
 SEED = 0
 # EPOCHS = 200
-DEVICE = "cuda:1"
+DEVICE = "cuda:3"
 
 USE_TUNED = 0
 
@@ -47,7 +47,7 @@ USE_TUNED = 0
 BORROW = None
 
 USE_DEFAULT = False
-WANDB = False
+WANDB = True
 FROM_PYGDA = False
 
 id = {

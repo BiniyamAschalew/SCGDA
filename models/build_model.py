@@ -11,12 +11,12 @@ from models.baselines.acdne.acdne import ACDNE
 from models.baselines.asn.asn import ASN
 from models.baselines.adagcn.adagcn import AdaGCN
 
-from models.ours.simgda_role.simgda_role import SimGDARole
+# from models.ours.simgda_role.simgda_role import SimGDARole
+# from models.ours.simgda_cheb.simgda_cheb import SimGDACheb
 from models.ours.simgda_spectral.simgda_spectral import SimGDASpectral
 from models.ours.structalign2.structalign2 import StructAlign2
 from models.ours.simmlp.simmlp import SimMLP
 from models.ours.dlit.dlit import DLIT
-from models.ours.simgda_cheb.simgda_cheb import SimGDACheb
 from models.ours.scgda.scgda import SCGDA
 
 from utils.expt_utils import print_string
@@ -35,7 +35,6 @@ def build_model(config: dict):
         "strurw": StruRW,
         "dgsda": DGSDA,
         "specreg": SpecReg,
-        "simgda_role": SimGDARole,
         "simgda_spectral": SimGDASpectral,
         "structalign2": StructAlign2,
         "mlp": MLP,
@@ -44,8 +43,9 @@ def build_model(config: dict):
         "asn": ASN,
         "adagcn": AdaGCN,
         "dlit": DLIT,
-        "simgda_cheb": SimGDACheb,
         "scgda": SCGDA,
+        # "simgda_role": SimGDARole,
+        # "simgda_cheb": SimGDACheb,
     }
 
     if model_name in models_dict:
