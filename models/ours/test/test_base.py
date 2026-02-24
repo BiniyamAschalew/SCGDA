@@ -21,7 +21,7 @@ class TestBase(nn.Module):
 
         self.cheb_k = config["model"].get(
             "cheb_k",
-            config["model"].get("cheb_K", config["model"].get("K", 3)),
+            config["model"].get("cheb_K", config["model"].get("K", 5)),
         )
         self.act = build_activation(config["model"]["activation"])
 

@@ -3,9 +3,11 @@ import torch
 import torch.nn.functional as F
 # from torch_geometric.loader import NeighborLoader
 # from torch_geometric.nn import global_mean_pool
+from tqdm import tqdm
 
 from models.base_model import BaseGDA
 from models.ours.test.test_base import TestBase
+from utils.filter_utils import cheb_to_monomial, tensor_to_float_list
 from utils.train_utils.mmd import MMD
 
 
@@ -94,7 +96,6 @@ class Test(BaseGDA):
 
         start_time = time.time()
 
-        from tqdm import tqdm
         for epoch in tqdm(range(self.epoch), desc="Training"):
             epoch_loss = 0
             epoch_source_logits = torch.empty(0).to(self.device)
@@ -128,6 +129,16 @@ class Test(BaseGDA):
         # self.simgda.load_state_dict(torch.load(self.best_model_dir))
 
         # after training, load the best model
+        source_cheb = torch.relu(self.test_model.source_temp.detach())
+        target_cheb = torch.relu(self.test_model.target_temp.detach())
+        source_mono = cheb_to_monomial(source_cheb)
+        target_mono = cheb_to_monomial(target_cheb)
+
+        print("Learned source filter (Cheb):", tensor_to_float_list(source_cheb))
+        print("Learned source filter (Monomial):", tensor_to_float_list(source_mono))
+        print("Learned target filter (Cheb):", tensor_to_float_list(target_cheb))
+        print("Learned target filter (Monomial):", tensor_to_float_list(target_mono))
+
         if self.verbose >= 1:
             print(f"== Best Model from Epoch {self.best_epoch+1:03d} with Val Micro-F1: {self.best_val:.4f} ==")
 
