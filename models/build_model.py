@@ -18,6 +18,7 @@ from models.ours.structalign2.structalign2 import StructAlign2
 from models.ours.simmlp.simmlp import SimMLP
 from models.ours.dlit.dlit import DLIT
 from models.ours.scgda.scgda import SCGDA
+from models.ours.test.test import Test
 
 from utils.expt_utils import print_string
 
@@ -46,6 +47,7 @@ def build_model(config: dict):
         "scgda": SCGDA,
         # "simgda_role": SimGDARole,
         # "simgda_cheb": SimGDACheb,
+        "test": Test,
     }
 
     if model_name in models_dict:

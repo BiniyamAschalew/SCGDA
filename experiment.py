@@ -19,7 +19,7 @@ MODELS = {
     10:"structalign2", 11:"mlp", 12:"simmlp",
     13:"acdne", 14:"asn", 15:"adagcn",
     16:"dlit", 17:"simgda_cheb",
-    18:"scgda",
+    18:"scgda", 19:"test",
     }
 
 
@@ -51,7 +51,7 @@ WANDB = False
 FROM_PYGDA = False
 
 id = {
-    "model": [0, 2, 9],
+    "model": [19],
     "dataset": [1],
     "source": [0],
     "target": [1],
