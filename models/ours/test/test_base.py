@@ -23,6 +23,7 @@ class TestBase(nn.Module):
             "cheb_k",
             config["model"].get("cheb_K", config["model"].get("K", 5)),
         )
+        self.cheb_lambda_max = config["model"].get("cheb_lambda_max", 2.0)
         self.act = build_activation(config["model"]["activation"])
 
         self.lin = nn.Linear(self.in_dim, self.hid_dim)
@@ -71,7 +72,14 @@ class TestBase(nn.Module):
         x = F.dropout(x, p=self.dropout, training=self.training)
 
         for i, prop in enumerate(self.props):
-            x = prop(x, edge_index, edge_weight=edge_weight, batch=batch, temp=temp)
+            x = prop(
+                x,
+                edge_index,
+                edge_weight=edge_weight,
+                batch=batch,
+                lambda_max=self.cheb_lambda_max,
+                temp=temp,
+            )
             if i < len(self.props) - 1:
                 x = self.act(x)
                 x = F.dropout(x, p=self.dropout, training=self.training)
@@ -87,7 +95,13 @@ class TestBase(nn.Module):
         if self.mode == "node":
             x = self.cls(x)
             if self.prop_out is not None:
-                x = self.prop_out(x, edge_index, edge_weight=edge_weight, temp=temp)
+                x = self.prop_out(
+                    x,
+                    edge_index,
+                    edge_weight=edge_weight,
+                    lambda_max=self.cheb_lambda_max,
+                    temp=temp,
+                )
         else:
             x = self.cls(x)
         return x

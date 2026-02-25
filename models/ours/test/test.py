@@ -44,16 +44,20 @@ class Test(BaseGDA):
 
         source_batch = getattr(source_data, "batch", None)
         target_batch = getattr(target_data, "batch", None)
+        source_edge_weight = getattr(source_data, "edge_weight", None)
+        target_edge_weight = getattr(target_data, "edge_weight", None)
 
         source_features = self.test_model.feat_bottleneck(
             source_data.x,
             source_data.edge_index,
+            edge_weight=source_edge_weight,
             batch=source_batch,
             domain="source",
         )
         target_features = self.test_model.feat_bottleneck(
             target_data.x,
             target_data.edge_index,
+            edge_weight=target_edge_weight,
             batch=target_batch,
             domain="target",
         )
@@ -61,11 +65,13 @@ class Test(BaseGDA):
         source_logits = self.test_model.feat_classifier(
             source_features,
             source_data.edge_index,
+            edge_weight=source_edge_weight,
             domain="source",
         )
         target_logits = self.test_model.feat_classifier(
             target_features,
             target_data.edge_index,
+            edge_weight=target_edge_weight,
             domain="target",
         )
 
@@ -153,6 +159,13 @@ class Test(BaseGDA):
 
         with torch.no_grad():
             batch = getattr(data, "batch", None)
-            logits = self.test_model(data.x, data.edge_index, batch=batch, domain="source")
+            edge_weight = getattr(data, "edge_weight", None)
+            logits = self.test_model(
+                data.x,
+                data.edge_index,
+                edge_weight=edge_weight,
+                batch=batch,
+                domain="source",
+            )
 
         return logits, data.y

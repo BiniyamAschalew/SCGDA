@@ -42,7 +42,7 @@ class ChebProp(MessagePassing):
         return H
 
     def __norm__(self, edge_index, num_nodes, edge_weight, lambda_max=None, dtype=None, batch=None):
-        """Make sure the eigenvalues are in the range [-1, 1] after normalization."""
+        """Build normalized propagation weights for Chebyshev recurrence."""
         edge_index, edge_weight = get_laplacian(
             edge_index,
             edge_weight,
@@ -66,6 +66,11 @@ class ChebProp(MessagePassing):
         loop_mask = edge_index[0] == edge_index[1]
         edge_weight[loop_mask] -= 1.0
 
+        # ChebConv-style scaled operator gives L_hat.
+        # We flip sign to use normalized adjacency A_norm as the base operator
+        # (for lambda_max=2, this becomes exactly A_norm).
+        edge_weight = -edge_weight
+
         return edge_index, edge_weight
 
     def forward(self, x, edge_index, edge_weight=None, batch=None, lambda_max=None, temp=None):
@@ -75,7 +80,7 @@ class ChebProp(MessagePassing):
         else:
             if temp.numel() != self.K:
                 raise ValueError(f"Expected temp with {self.K} elements, got {temp.numel()}.")
-            TEMP = F.relu(temp)
+            TEMP = F.relu(temp.to(dtype=x.dtype, device=x.device))
 
         edge_index1, norm1 = self.__norm__(
             edge_index,
