@@ -26,7 +26,12 @@ class TestBase(nn.Module):
         self.cheb_lambda_max = config["model"].get("cheb_lambda_max", 2.0)
         self.act = build_activation(config["model"]["activation"])
 
-        self.lin = nn.Linear(self.in_dim, self.hid_dim)
+        # Match GNN layer capacities:
+        # layer 0: in_dim -> hid_dim, remaining layers: hid_dim -> hid_dim
+        self.lins = nn.ModuleList()
+        self.lins.append(nn.Linear(self.in_dim, self.hid_dim))
+        for _ in range(self.num_layers - 1):
+            self.lins.append(nn.Linear(self.hid_dim, self.hid_dim))
         self.props = nn.ModuleList(
             [ChebProp(self.cheb_k, is_source_domain=False) for _ in range(self.num_layers)]
         )
@@ -41,8 +46,8 @@ class TestBase(nn.Module):
             raise ValueError(f"Invalid mode: {self.mode}")
 
         # One shared Chebyshev approximation per domain, reused in every layer.
-        self.source_temp = nn.Parameter(self.lin.weight.new_empty(self.cheb_k))
-        self.target_temp = nn.Parameter(self.lin.weight.new_empty(self.cheb_k))
+        self.source_temp = nn.Parameter(self.lins[0].weight.new_empty(self.cheb_k))
+        self.target_temp = nn.Parameter(self.lins[0].weight.new_empty(self.cheb_k))
         self.reset_filter_parameters()
 
     def reset_filter_parameters(self):
@@ -63,13 +68,24 @@ class TestBase(nn.Module):
         x = self.feat_classifier(x, edge_index, edge_weight=edge_weight, domain=domain)
         x = F.log_softmax(x, dim=1)
         return x
+    
+    def filter_bottleneck(self, x, edge_index, edge_weight=None, batch=None, domain="source"):
+        """ A helper function to inspect the effect of the Chebyshev filter alone, without the linear layers or activations."""
+        temp = self._get_domain_temp(domain)
+        for prop_layer in self.props:
+            x = prop_layer(
+                x,
+                edge_index,
+                edge_weight=edge_weight,
+                batch=batch,
+                lambda_max=self.cheb_lambda_max,
+                temp=temp,
+            )
+        return x
+        
 
     def feat_bottleneck(self, x, edge_index, edge_weight=None, batch=None, domain="source"):
         temp = self._get_domain_temp(domain)
-
-        x = self.lin(x)
-        x = self.act(x)
-        x = F.dropout(x, p=self.dropout, training=self.training)
 
         for i, prop in enumerate(self.props):
             x = prop(
@@ -80,6 +96,10 @@ class TestBase(nn.Module):
                 lambda_max=self.cheb_lambda_max,
                 temp=temp,
             )
+
+            lin_layer = self.lins[i]
+            x = lin_layer(x)
+
             if i < len(self.props) - 1:
                 x = self.act(x)
                 x = F.dropout(x, p=self.dropout, training=self.training)
@@ -93,7 +113,6 @@ class TestBase(nn.Module):
         temp = self._get_domain_temp(domain)
 
         if self.mode == "node":
-            x = self.cls(x)
             if self.prop_out is not None:
                 x = self.prop_out(
                     x,
@@ -102,6 +121,7 @@ class TestBase(nn.Module):
                     lambda_max=self.cheb_lambda_max,
                     temp=temp,
                 )
+            x = self.cls(x)
         else:
             x = self.cls(x)
         return x
