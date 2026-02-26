@@ -30,6 +30,10 @@ class Test(BaseGDA):
         # self.gamma = config["model"]["gamma"]
 
         self.mmd_weight = config["model"]["mmd_weight"]
+
+        self.filter_mmd = config["model"]["filter_mmd"]
+        self.linear_mmd = config["model"]["linear_mmd"]
+
         self.mode = config["model"]["mode"]
         self.test_model = None
 
@@ -80,6 +84,39 @@ class Test(BaseGDA):
 
         loss = F.nll_loss(source_logits, source_data.y)
         mmd_loss = MMD(source_features, target_features).to(self.device)
+        probe_mmd_loss = torch.tensor(0.0).to(self.device)
+
+        if self.filter_mmd:
+            # aligning the filters by computing the MMD for an aligned feature set (probe)
+            all_features = torch.cat((source_features, target_features), dim=0).detach()
+            probe_mean = all_features.mean(dim=0, keepdim=True)
+            probe_std = all_features.std(dim=0, keepdim=True) + 1e-6
+            probe_features = torch.randn_like(all_features) * probe_std + probe_mean
+            source_probe = probe_features[:source_features.size(0)]
+            target_probe = probe_features[source_features.size(0):]
+
+            source_probe = self.test_model.filter_bottleneck(
+                source_probe,
+                source_data.edge_index,
+                edge_weight=source_edge_weight,
+                batch=source_batch,
+                domain="source",
+            )
+            target_probe = self.test_model.filter_bottleneck(
+                target_probe,
+                target_data.edge_index,
+                edge_weight=target_edge_weight,
+                batch=target_batch,
+                domain="target",
+            )
+            probe_mmd_loss = MMD(source_probe, target_probe).to(self.device)
+            mmd_loss = mmd_loss + probe_mmd_loss
+
+        self.wandb.log({
+            "MMD Loss": mmd_loss.item(),
+            "Probe MMD Loss": probe_mmd_loss.item() if self.filter_mmd else None,
+        })
+
         loss += self.mmd_weight * mmd_loss
 
 
@@ -117,7 +154,7 @@ class Test(BaseGDA):
                 loss.backward()
                 optimizer.step()
 
-                source_logits, source_labels = self.predict(sampled_source_data)
+                source_logits, source_labels = self.predict(sampled_source_data, domain="source")
                 epoch_source_logits = torch.cat((epoch_source_logits, source_logits))
                 epoch_source_labels = torch.cat((epoch_source_labels, source_labels))
             
@@ -154,7 +191,7 @@ class Test(BaseGDA):
     def process_graph(self, data):
         pass
 
-    def predict(self, data):
+    def predict(self, data, domain="target"):
         self.test_model.eval()
 
         with torch.no_grad():
@@ -165,7 +202,7 @@ class Test(BaseGDA):
                 data.edge_index,
                 edge_weight=edge_weight,
                 batch=batch,
-                domain="source",
+                domain=domain,
             )
 
         return logits, data.y

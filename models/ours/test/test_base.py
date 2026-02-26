@@ -83,6 +83,11 @@ class TestBase(nn.Module):
             )
         return x
         
+    def linear_bottleneck(self, x):
+        """ A helper function to inspect the effect of the linear layers alone, without the Chebyshev filter or activations."""
+        for lin_layer in self.lins:
+            x = lin_layer(x)
+        return x
 
     def feat_bottleneck(self, x, edge_index, edge_weight=None, batch=None, domain="source"):
         temp = self._get_domain_temp(domain)

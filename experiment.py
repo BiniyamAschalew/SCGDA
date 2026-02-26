@@ -38,8 +38,8 @@ REPEATS = 1
 role_type = ROLE_TYPES[2]
 
 SEED = 0
-# EPOCHS = 200
-DEVICE = "cuda:3"
+EPOCHS = 200
+DEVICE = "cuda:1"
 
 USE_TUNED = 0
 
@@ -47,12 +47,12 @@ USE_TUNED = 0
 BORROW = None
 
 USE_DEFAULT = False
-WANDB = False
+WANDB = True
 FROM_PYGDA = False
 
 id = {
     "model": [19],
-    "dataset": [0],
+    "dataset": [1],
     "source": [0],
     "target": [1],
 }
@@ -109,6 +109,7 @@ for repeat in range(REPEATS):
                         {
                             "adv": False,
                             "role_type": role_type,
+                            "epochs": EPOCHS,
                         },
                         
                     }
