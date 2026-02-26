@@ -48,11 +48,11 @@ def build_config(config_setup: dict, update_config: dict = None, borrow: str = N
         target = cfg.expt.target
         dataset = cfg.data.name.lower()
 
-        # if borrow:
-        #     tuned_config = load_config(f"{TUNED_DIR}/{borrow}/{dataset}/{source}_{target}/{file}")
-        #     tuned_config.name = model  # keep the original model name
-        # else:
-        tuned_config = load_config(f"{TUNED_DIR}/{model}/{dataset}/{source}_{target}/{file}")
+        if borrow:
+            tuned_config = load_config(f"{TUNED_DIR}/{borrow}/{dataset}/{source}_{target}/{file}")
+            tuned_config.name = model  # keep the original model name
+        else:
+            tuned_config = load_config(f"{TUNED_DIR}/{model}/{dataset}/{source}_{target}/{file}")
         
         cfg.model = OmegaConf.merge(cfg.model, tuned_config)
         

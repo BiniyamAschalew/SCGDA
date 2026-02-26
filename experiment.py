@@ -20,6 +20,7 @@ MODELS = {
     13:"acdne", 14:"asn", 15:"adagcn",
     16:"dlit", 17:"simgda_cheb",
     18:"scgda", 19:"test",
+    20:"bdlite",
     }
 
 
@@ -39,21 +40,21 @@ role_type = ROLE_TYPES[2]
 
 SEED = 0
 EPOCHS = 200
-DEVICE = "cuda:1"
+DEVICE = "cuda:6"
 
-USE_TUNED = 0
+USE_TUNED = 2
 
 # BORROW = "simgda"
-BORROW = None
+BORROW = "dgsda"
 
 USE_DEFAULT = False
-WANDB = True
+WANDB = False
 FROM_PYGDA = False
 
 id = {
-    "model": [19],
-    "dataset": [1],
-    "source": [0],
+    "model": [20],
+    "dataset": [0],
+    "source": [2],
     "target": [1],
 }
 notes = "dgsda_evaluation"
@@ -109,7 +110,7 @@ for repeat in range(REPEATS):
                         {
                             "adv": False,
                             "role_type": role_type,
-                            "epochs": EPOCHS,
+                            # "epochs": EPOCHS,
                         },
                         
                     }
