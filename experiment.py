@@ -40,7 +40,7 @@ role_type = ROLE_TYPES[2]
 
 SEED = 0
 EPOCHS = 200
-DEVICE = "cuda:6"
+DEVICE = "cuda:3"
 
 USE_TUNED = 2
 
@@ -52,9 +52,9 @@ WANDB = False
 FROM_PYGDA = False
 
 id = {
-    "model": [20],
+    "model": [7],
     "dataset": [0],
-    "source": [2],
+    "source": [0],
     "target": [1],
 }
 notes = "dgsda_evaluation"

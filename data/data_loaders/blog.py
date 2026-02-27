@@ -61,10 +61,7 @@ class BlogDataset(BaseDataset):
             val_mask=val_masks,
             test_mask=test_masks,
         )
-
-        if self.pre_transform is not None:
-            if not os.path.exists(self.processed_paths[0] + "eival.pt"):
-                data = self.pre_transform(data, self.processed_paths[0])
+        data = self.apply_pre_transform(data)
 
         data_list.append(data)
         data, slices = self.collate([data])

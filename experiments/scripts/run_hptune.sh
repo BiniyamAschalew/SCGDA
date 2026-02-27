@@ -1,14 +1,13 @@
 #!/bin/bash
-# Run hp tuning in parallel across GPUs/seeds.
-GPUS=(0 1 2 3 6)
-SEEDS=(200 201 202 203 204)
+# Run HP tuning in parallel across GPUs/seeds.
+set -euo pipefail
 
-# GPUS=(3)
-# SEEDS=(200)
+GPUS=(0 4 5 3 7)
+SEEDS=(2026 2027 2028 2029 2030)
 
-CONFIG="hp2"
-SPACE_DIR="__hps__/space/dgsda"
-RUN_ID="${2:-$(date +%m%d_%H%M%S)}"
+CONFIG="${1:-hp0}"
+SPACE_DIR="${2:-__hps__/space/default}"
+RUN_ID="${3:-$(date +%m%d_%H%M%S)}"
 
 if [ "${#GPUS[@]}" -ne "${#SEEDS[@]}" ]; then
   echo "GPUS and SEEDS arrays must be the same length." >&2
@@ -19,8 +18,23 @@ fi
 if [ "${#GPUS[@]}" -eq 1 ]; then
   CUDA_VISIBLE_DEVICES=${GPUS[0]} python hp_tune.py --seed "${SEEDS[0]}" --config "${CONFIG}" --run-id "${RUN_ID}" --space-dir "${SPACE_DIR}"
 else
+  pids=()
   for i in "${!GPUS[@]}"; do
     CUDA_VISIBLE_DEVICES=${GPUS[$i]} python hp_tune.py --seed "${SEEDS[$i]}" --config "${CONFIG}" --run-id "${RUN_ID}" --space-dir "${SPACE_DIR}" &
+    pids+=($!)
   done
-  wait
+
+  failed=0
+  for pid in "${pids[@]}"; do
+    if ! wait "${pid}"; then
+      failed=1
+    fi
+  done
+
+  if [ "${failed}" -ne 0 ]; then
+    echo "HP tuning completed with failures in one or more seed jobs." >&2
+    exit 1
+  fi
 fi
+
+echo "HP tuning complete. run_id=${RUN_ID}, config=${CONFIG}, space_dir=${SPACE_DIR}"

@@ -1,3 +1,4 @@
+import os
 import os.path as osp
 import warnings
 
@@ -104,6 +105,21 @@ class BaseDataset(InMemoryDataset):
 
         return train_masks, val_masks, test_masks
 
+    def apply_pre_transform(self, data):
+        """Attach or compute spectral features used by SpecReg."""
+        if self.pre_transform is None:
+            return data
+
+        processed_path = self.processed_paths[0]
+        eival_path = processed_path + "eival.pt"
+        eivec_path = processed_path + "eivec.pt"
+
+        if os.path.exists(eival_path) and os.path.exists(eivec_path):
+            data.eival = torch.load(eival_path, map_location="cpu")
+            data.eivec = torch.load(eivec_path, map_location="cpu")
+            return data
+
+        return self.pre_transform(data, processed_path)
 
 
 

@@ -119,25 +119,31 @@ def main() -> None:
     else:
         # Search in results_dir for files matching run_id
         results_dir = Path(args.results_dir)
+        csv_files = []
+
         if args.run_id:
-            pattern = f"results_{args.run_id}_seed*.csv"
-        else:
-            pattern = "results_*_seed*.csv"
-        
-        csv_files = sorted(results_dir.glob(pattern))
-        if not csv_files:
-            # Fallback: try old format or find latest
-            if args.run_id:
+            csv_files = sorted(results_dir.glob(f"results_{args.run_id}_seed*.csv"))
+            if not csv_files:
                 csv_files = sorted(results_dir.glob(f"results_{args.run_id}.csv"))
+        else:
+            seed_files = sorted(
+                results_dir.glob("results_*_seed*.csv"),
+                key=lambda p: p.stat().st_mtime,
+                reverse=True,
+            )
+            if seed_files:
+                latest = seed_files[0].name
+                latest_run_id = latest.replace("results_", "").split("_seed")[0]
+                csv_files = sorted(results_dir.glob(f"results_{latest_run_id}_seed*.csv"))
             else:
-                csv_files = sorted(results_dir.glob("results_*.csv"), reverse=True)
-                if csv_files:
-                    # Get the latest run_id and find all its files
-                    latest = csv_files[0].stem
-                    # Extract run_id from filename (results_RUNID or results_RUNID_seedX)
-                    parts = latest.replace("results_", "").split("_seed")
-                    latest_run_id = parts[0]
-                    csv_files = sorted(results_dir.glob(f"results_{latest_run_id}*.csv"))
+                # Old single-file format fallback.
+                old_files = sorted(
+                    results_dir.glob("results_*.csv"),
+                    key=lambda p: p.stat().st_mtime,
+                    reverse=True,
+                )
+                if old_files:
+                    csv_files = [old_files[0]]
         
         if not csv_files:
             raise FileNotFoundError(f"No result files found in: {results_dir}")
@@ -186,7 +192,11 @@ def main() -> None:
         source = str(row["source"])
         target = str(row["target"])
 
-        hp_payload = {key: row[key] for key in hp_cols if key in row}
+        hp_payload = {
+            key: row[key]
+            for key in hp_cols
+            if key in row and pd.notna(row[key])
+        }
 
         out_dir = output_root / model / dataset / f"{source}_{target}"
         _write_yaml(out_dir / f"{time_id}.yaml", hp_payload)

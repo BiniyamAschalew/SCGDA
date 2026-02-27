@@ -98,6 +98,11 @@ class SpecReg(BaseGDA):
 
     def fit(self, source_data, target_data):
 
+        if source_data.edge_index is not None:
+            source_data.edge_index = source_data.edge_index.clone().contiguous()
+        if target_data.edge_index is not None:
+            target_data.edge_index = target_data.edge_index.clone().contiguous()
+
         self.num_source_nodes, _ = source_data.x.shape
         self.num_target_nodes, _ = target_data.x.shape
 

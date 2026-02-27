@@ -74,6 +74,12 @@ def run(config: dict, from_pygda: bool = False) -> dict:
         source_data = source_dataset[0].to(device)
         target_data = target_dataset[0].to(device)
 
+        # Some pyg sampling ops require contiguous edge indices.
+        if source_data.edge_index is not None:
+            source_data.edge_index = source_data.edge_index.contiguous()
+        if target_data.edge_index is not None:
+            target_data.edge_index = target_data.edge_index.contiguous()
+
         num_features = source_data.x.shape[1]
         num_classes = len(source_data.y.unique())
 
