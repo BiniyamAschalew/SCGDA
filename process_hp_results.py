@@ -8,6 +8,7 @@ from pathlib import Path
 
 import pandas as pd
 import yaml
+from utils.config_utils import build_config
 
 
 META_COLS = {
@@ -16,8 +17,13 @@ META_COLS = {
     "source",
     "target",
     "model",
+    "base_model",
     "seed",
     "hp_id",
+    "config_id",
+    "use_imported",
+    "imported_config",
+    "tuned_params",
     "status",
     "train_time",
     "error_type",
@@ -49,6 +55,89 @@ def _write_yaml(path: Path, payload: dict) -> None:
         yaml.safe_dump(payload, f, sort_keys=False)
 
 
+def _as_bool(value) -> bool:
+    if isinstance(value, bool):
+        return value
+    if value is None:
+        return False
+    return str(value).strip().lower() in {"1", "true", "yes", "y", "on"}
+
+
+def _to_builtin(value):
+    if hasattr(value, "item"):
+        try:
+            value = value.item()
+        except Exception:
+            pass
+    if isinstance(value, float) and pd.isna(value):
+        return None
+    if isinstance(value, dict):
+        return {str(k): _to_builtin(v) for k, v in value.items()}
+    if isinstance(value, list):
+        return [_to_builtin(v) for v in value]
+    return value
+
+
+def _parse_tuned_params(value, fallback: list) -> list:
+    if value is None or (isinstance(value, float) and pd.isna(value)):
+        return list(fallback)
+    text = str(value).strip()
+    if not text:
+        return list(fallback)
+    params = [token.strip() for token in text.split("|") if token.strip()]
+    return params if params else list(fallback)
+
+
+def _load_imported_payload(sample_row: pd.Series) -> dict:
+    model = str(sample_row.get("base_model", sample_row["model"])).lower()
+    dataset = str(sample_row["dataset"]).lower()
+    source = str(sample_row["source"])
+    target = str(sample_row["target"])
+
+    candidate = sample_row.get("imported_config")
+    if candidate and str(candidate).strip():
+        path = Path(str(candidate).strip())
+    else:
+        path = Path("__hps__/imported") / model / dataset / f"{source}_{target}" / "imported.yaml"
+
+    if not path.exists():
+        raise FileNotFoundError(f"Imported config not found: {path}")
+
+    with path.open("r") as f:
+        return yaml.safe_load(f) or {}
+
+
+def _build_full_model_payload(sample_row: pd.Series, best_row: pd.Series, hp_cols: list) -> dict:
+    model = str(sample_row.get("base_model", sample_row["model"])).lower()
+    dataset = str(sample_row["dataset"])
+    source = str(sample_row["source"])
+    target = str(sample_row["target"])
+
+    try:
+        base_cfg = build_config(
+            {"data": dataset, "expt": "default", "model": model},
+            {"expt": {"source": source, "target": target, "verbose": 0}},
+        )
+        payload = dict(base_cfg.get("model", {}))
+    except Exception as exc:
+        print(f"[Warning] Failed to load base config for {model} ({dataset}:{source}->{target}): {exc}")
+        payload = {}
+
+    if _as_bool(sample_row.get("use_imported", 0)):
+        try:
+            payload.update(_load_imported_payload(sample_row))
+        except Exception as exc:
+            print(f"[Warning] Failed to load imported config for {model} ({source}->{target}): {exc}")
+
+    for key in hp_cols:
+        value = best_row.get(key)
+        if pd.notna(value):
+            payload[key] = value
+
+    payload["tuned_params"] = _parse_tuned_params(sample_row.get("tuned_params"), hp_cols)
+    return _to_builtin(payload)
+
+
 def _append_performance_csv(path: Path, time_id: str, metrics_dict: dict) -> None:
     """Append performance metrics to a CSV file, creating it if it doesn't exist."""
     path.parent.mkdir(parents=True, exist_ok=True)
@@ -74,7 +163,10 @@ def _append_performance_csv(path: Path, time_id: str, metrics_dict: dict) -> Non
 def _collect_csv_files_from_run_dir(run_dir: Path) -> list:
     if not run_dir.exists() or not run_dir.is_dir():
         return []
-    return sorted(run_dir.glob("*.csv"))
+    seed_files = sorted(run_dir.glob("results_*_seed*.csv"))
+    if seed_files:
+        return seed_files
+    return sorted(run_dir.glob("results_*.csv"))
 
 
 def _find_latest_run_dir(results_dir: Path) -> Path | None:
@@ -193,6 +285,9 @@ def main() -> None:
     if df.empty:
         raise ValueError("Results file(s) are empty")
 
+    if "hp_id" not in df.columns and "config_id" in df.columns:
+        df["hp_id"] = df["config_id"]
+
     metric = args.metric
     metrics = set(_parse_list(args.metrics))
     metrics.add(metric)
@@ -225,20 +320,27 @@ def main() -> None:
     output_root = Path(args.output_root)
 
     for _, row in best_rows.iterrows():
+        sample_mask = (
+            (df["model"] == row["model"]) &
+            (df["dataset"] == row["dataset"]) &
+            (df["source"] == row["source"]) &
+            (df["target"] == row["target"]) &
+            (df["hp_id"] == row["hp_id"])
+        )
+        if not sample_mask.any():
+            continue
+        sample_row = df.loc[sample_mask].iloc[0]
+
         model = str(row["model"]).lower()
         dataset = str(row["dataset"]).lower()
         source = str(row["source"])
         target = str(row["target"])
 
-        hp_payload = {
-            key: row[key]
-            for key in hp_cols
-            if key in row and pd.notna(row[key])
-        }
+        model_payload = _build_full_model_payload(sample_row, row, hp_cols)
 
         out_dir = output_root / model / dataset / f"{source}_{target}"
-        _write_yaml(out_dir / f"{time_id}.yaml", hp_payload)
-        _write_yaml(out_dir / "best.yaml", hp_payload)
+        _write_yaml(out_dir / f"{time_id}.yaml", model_payload)
+        _write_yaml(out_dir / "best.yaml", model_payload)
 
         # Get metric values for this best config
         mask = (

@@ -1,41 +1,23 @@
-"""
-Code for running hp search.
-"""
+"""Hyperparameter tuning runner."""
 
 import argparse
 import csv
 import fcntl
-import multiprocessing as mp
-import os
 import time
 from itertools import product
 from pathlib import Path
 
 import yaml
-from utils.config_utils import build_config
+
 from run import run
-import pandas as pd
-
-MODEL_RUNTIME_KEYS = {"epochs"}
-PROGRESS_DIR = Path("__hps__/tuned/progress")
-PROGRESS_FIELDS = [
-    "run_id",
-    "seed",
-    "status",
-    "start_time",
-    "last_update",
-    "elapsed_sec",
-    "completed",
-    "remaining",
-    "total",
-    "pre_completed",
-    "new_processed",
-    "skipped",
-    "eta_sec",
-]
+from utils.config_utils import build_config
 
 
-def _resolve_config_path(config_value: str) -> Path:
+PROGRESS_FIELDS = ["seed", "start_time", "completed", "total"]
+SUPPORTED_IMPORTED_MODELS = {"a2gnn", "adagcn", "dgsda", "specreg", "kbl", "pairalign"}
+
+
+def resolve_config_path(config_value: str) -> Path:
     path = Path(config_value)
     if path.suffix != ".yaml":
         path = Path("./configs/expt_configs") / f"{config_value}.yaml"
@@ -44,70 +26,67 @@ def _resolve_config_path(config_value: str) -> Path:
     return path
 
 
+def load_yaml(path: Path) -> dict:
+    with path.open("r") as f:
+        return yaml.safe_load(f) or {}
+
+
+def as_bool(value) -> bool:
+    if isinstance(value, bool):
+        return value
+    if value is None:
+        return False
+    return str(value).strip().lower() in {"1", "true", "yes", "y", "on"}
+
+
 def load_search_space(space_dir: Path, dataset: str) -> dict:
     path = space_dir / f"{dataset.lower()}.yaml"
     if not path.exists():
         raise FileNotFoundError(f"Search space file not found: {path}")
 
-    with path.open("r") as f:
-        space = yaml.safe_load(f) or {}
+    space = load_yaml(path).get("model", {})
+    if not isinstance(space, dict) or not space:
+        raise ValueError(f"Missing or invalid top-level 'model' section in {path}")
 
-    model_space = space.get("model", {})
-    if not model_space:
-        raise ValueError(
-            f"Search space file must have a top-level 'model' key: {path}"
-        )
-
-    normalized = {}
-    for key, value in model_space.items():
-        normalized[key] = value if isinstance(value, list) else [value]
-
-    return normalized
+    return {k: v if isinstance(v, list) else [v] for k, v in space.items()}
 
 
-def build_combos(space: dict, max_combos: int) -> list:
+def build_combos(space: dict, max_combos: int):
     keys = sorted(space.keys())
-    values = [space[key] for key in keys]
-    combos = []
-    total_combos = 1
+    values = [space[k] for k in keys]
+
+    total = 1
     for vals in values:
-        total_combos *= len(vals)
+        total *= len(vals)
 
-    selected_indices = None
-    if max_combos and max_combos < total_combos:
-        # Sample uniformly across the full cartesian grid instead of taking
-        # the first max_combos entries, which is order-biased.
-        selected_indices = set(
-            min(total_combos - 1, int((i + 0.5) * total_combos / max_combos))
+    selected = None
+    if max_combos and max_combos < total:
+        selected = {
+            min(total - 1, int((i + 0.5) * total / max_combos))
             for i in range(max_combos)
-        )
-
-        # Guard against rare collisions after integer rounding.
-        if len(selected_indices) < max_combos:
-            for idx in range(total_combos):
-                selected_indices.add(idx)
-                if len(selected_indices) == max_combos:
+        }
+        if len(selected) < max_combos:
+            for idx in range(total):
+                selected.add(idx)
+                if len(selected) == max_combos:
                     break
 
+    combos = []
     for idx, combo in enumerate(product(*values)):
-        if selected_indices is not None and idx not in selected_indices:
+        if selected is not None and idx not in selected:
             continue
         combos.append((idx, dict(zip(keys, combo))))
+        if selected is None and max_combos and len(combos) >= max_combos:
+            break
 
-    if max_combos and len(combos) > max_combos:
-        combos = combos[:max_combos]
-
-    return combos
+    return combos, total
 
 
 def iter_transfer_pairs(transfer_settings: dict):
-    for dataset, settings in transfer_settings.items():
-        if not isinstance(settings, dict):
-            raise ValueError(
-                "transfer_settings must map dataset to {source: target(s)}"
-            )
-
-        for source, targets in settings.items():
+    for dataset, mapping in transfer_settings.items():
+        if not isinstance(mapping, dict):
+            raise ValueError("transfer_settings must map dataset -> {source: target(s)}")
+        for source, targets in mapping.items():
             if isinstance(targets, (list, tuple)):
                 for target in targets:
                     yield dataset, source, target
@@ -115,165 +94,131 @@ def iter_transfer_pairs(transfer_settings: dict):
                 yield dataset, source, targets
 
 
-def unique_list(items: list) -> list:
-    seen = set()
-    out = []
-    for item in items:
-        if item in seen:
-            continue
-        seen.add(item)
-        out.append(item)
-    return out
+def validate_transfer_pairs(pairs: list) -> None:
+    invalid = [(d, s, t) for d, s, t in pairs if s == t]
+    if invalid:
+        sample = ", ".join([f"{d}:{s}->{t}" for d, s, t in invalid[:5]])
+        raise ValueError(f"source==target is not allowed in transfer settings. Examples: {sample}")
+
+
+def validate_imported_models(models: list) -> None:
+    missing = [m for m in models if m.lower() not in SUPPORTED_IMPORTED_MODELS]
+    if missing:
+        raise ValueError(
+            f"from_pygda path currently supports {sorted(SUPPORTED_IMPORTED_MODELS)}, "
+            f"but got unsupported models: {missing}"
+        )
+
+
+def validate_imported_files(models: list, pairs: list) -> None:
+    missing = []
+    for dataset, source, target in pairs:
+        for model in models:
+            path = Path("__hps__/imported") / model.lower() / dataset.lower() / f"{source}_{target}" / "imported.yaml"
+            if not path.exists():
+                missing.append(str(path))
+    if missing:
+        sample = "\n".join(missing[:12])
+        suffix = "" if len(missing) <= 12 else f"\n... (+{len(missing)-12} more)"
+        raise FileNotFoundError(f"Missing imported configs:\n{sample}{suffix}")
+
+
+def combo_is_valid(model: str, hp_params: dict) -> bool:
+    model = model.lower()
+    if model == "dgsda":
+        num_layers = hp_params.get("num_layers")
+        if num_layers is None:
+            return True
+        try:
+            return int(num_layers) == 2
+        except Exception:
+            return False
+    return True
+
+
+def normalize_hp_id(value):
+    text = str(value).strip()
+    if not text:
+        return text
+    try:
+        return int(float(text))
+    except Exception:
+        return value
+
+
+def load_completed_keys(result_path: Path, seed: int) -> set:
+    if not result_path.exists():
+        return set()
+
+    with result_path.open("r", newline="") as f:
+        rows = list(csv.DictReader(f))
+
+    completed = {
+        (
+            row.get("dataset"),
+            row.get("source"),
+            row.get("target"),
+            row.get("model"),
+            normalize_hp_id(row.get("hp_id")),
+        )
+        for row in rows
+    }
+    print(f"[Seed {seed}] Found {len(completed)} completed experiments, will skip them")
+    return completed
 
 
 def append_row_csv(path: Path, row: dict, columns: list) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
+    needs_header = not path.exists() or path.stat().st_size == 0
     payload = {col: row.get(col, "") for col in columns}
+    with path.open("a", newline="") as f:
+        writer = csv.DictWriter(f, fieldnames=columns)
+        if needs_header:
+            writer.writeheader()
+        writer.writerow(payload)
+
+
+def update_progress(path: Path, seed: int, start_time: str, completed: int, total: int) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    current = {
+        "seed": str(seed),
+        "start_time": start_time,
+        "completed": str(completed),
+        "total": str(total),
+    }
 
     with path.open("a+", newline="") as f:
         fcntl.flock(f, fcntl.LOCK_EX)
         try:
-            f.seek(0, os.SEEK_END)
-            needs_header = f.tell() == 0
-            writer = csv.DictWriter(f, fieldnames=columns)
-            if needs_header:
-                writer.writeheader()
-            writer.writerow(payload)
-            f.flush()
-            os.fsync(f.fileno())
-        finally:
-            fcntl.flock(f, fcntl.LOCK_UN)
-
-
-def _format_duration(seconds) -> str:
-    if seconds is None:
-        return "N/A"
-    try:
-        seconds = int(max(0, round(float(seconds))))
-    except Exception:
-        return "N/A"
-    hours, rem = divmod(seconds, 3600)
-    minutes, secs = divmod(rem, 60)
-    return f"{hours:02d}:{minutes:02d}:{secs:02d}"
-
-
-def _update_progress(
-    run_id: str,
-    seed: int,
-    total_experiments: int,
-    pre_completed: int,
-    new_processed: int,
-    skipped_exp: int,
-    start_epoch: float,
-    start_label: str,
-    status: str,
-) -> None:
-    PROGRESS_DIR.mkdir(parents=True, exist_ok=True)
-    csv_path = PROGRESS_DIR / f"{run_id}.csv"
-    txt_path = PROGRESS_DIR / f"{run_id}.txt"
-
-    now_epoch = time.time()
-    now_label = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(now_epoch))
-    elapsed = now_epoch - start_epoch
-
-    completed = min(total_experiments, pre_completed + new_processed)
-    remaining = max(0, total_experiments - completed)
-    eta_sec = None
-    if new_processed > 0:
-        avg_sec_per_run = elapsed / new_processed
-        eta_sec = avg_sec_per_run * remaining
-
-    current_row = {
-        "run_id": run_id,
-        "seed": str(seed),
-        "status": status,
-        "start_time": start_label,
-        "last_update": now_label,
-        "elapsed_sec": f"{elapsed:.3f}",
-        "completed": str(completed),
-        "remaining": str(remaining),
-        "total": str(total_experiments),
-        "pre_completed": str(pre_completed),
-        "new_processed": str(new_processed),
-        "skipped": str(skipped_exp),
-        "eta_sec": "" if eta_sec is None else f"{eta_sec:.3f}",
-    }
-
-    with csv_path.open("a+", newline="") as f:
-        fcntl.flock(f, fcntl.LOCK_EX)
-        try:
             f.seek(0)
-            existing_rows = []
+            rows = []
             if f.read(1):
                 f.seek(0)
-                existing_rows = list(csv.DictReader(f))
+                rows = list(csv.DictReader(f))
 
-            by_seed = {row.get("seed", ""): row for row in existing_rows}
-            by_seed[str(seed)] = current_row
-
-            rows = [
-                by_seed[key]
-                for key in sorted(
-                    by_seed.keys(),
-                    key=lambda x: int(x) if str(x).isdigit() else str(x),
-                )
-            ]
+            by_seed = {row.get("seed", ""): row for row in rows}
+            by_seed[str(seed)] = current
+            merged = [by_seed[s] for s in sorted(by_seed.keys(), key=lambda x: int(x) if x.isdigit() else x)]
 
             f.seek(0)
             f.truncate()
             writer = csv.DictWriter(f, fieldnames=PROGRESS_FIELDS)
             writer.writeheader()
-            writer.writerows(rows)
-            f.flush()
-            os.fsync(f.fileno())
-
-            overall_completed = sum(int(row.get("completed", 0) or 0) for row in rows)
-            overall_total = sum(int(row.get("total", 0) or 0) for row in rows)
-            overall_remaining = max(0, overall_total - overall_completed)
-
-            eta_values = []
-            for row in rows:
-                value = row.get("eta_sec", "")
-                if not value:
-                    continue
-                try:
-                    eta_values.append(float(value))
-                except Exception:
-                    continue
-            overall_eta = max(eta_values) if eta_values else None
-
-            lines = [
-                f"run_id: {run_id}",
-                f"updated_at: {now_label}",
-                f"overall_completed: {overall_completed}/{overall_total}",
-                f"overall_remaining: {overall_remaining}",
-                f"overall_eta: {_format_duration(overall_eta)}",
-                "",
-                "per_seed:",
-            ]
-
-            for row in rows:
-                lines.append(
-                    "  "
-                    + f"seed={row.get('seed')} "
-                    + f"status={row.get('status')} "
-                    + f"completed={row.get('completed')}/{row.get('total')} "
-                    + f"remaining={row.get('remaining')} "
-                    + f"elapsed={_format_duration(row.get('elapsed_sec'))} "
-                    + f"eta={_format_duration(row.get('eta_sec') if row.get('eta_sec') else None)} "
-                    + f"updated={row.get('last_update')}"
-                )
-
-            tmp_path = txt_path.with_suffix(".txt.tmp")
-            tmp_path.write_text("\n".join(lines) + "\n")
-            os.replace(tmp_path, txt_path)
+            writer.writerows(merged)
         finally:
             fcntl.flock(f, fcntl.LOCK_UN)
 
 
-def _build_error_result(config: dict, error: Exception, stage: str) -> dict:
-    expt = config.get("expt", {}) if isinstance(config, dict) else {}
-    model = config.get("model", {}) if isinstance(config, dict) else {}
+def load_imported_config(model: str, dataset: str, source: str, target: str):
+    path = Path("__hps__/imported") / model.lower() / dataset.lower() / f"{source}_{target}" / "imported.yaml"
+    if not path.exists():
+        raise FileNotFoundError(f"Imported config not found: {path}")
+    return load_yaml(path), str(path)
+
+
+def build_error_result(config: dict, error: Exception, stage: str) -> dict:
+    expt = config.get("expt", {})
+    model = config.get("model", {})
     return {
         "status": "error",
         "error_type": "exception",
@@ -288,274 +233,191 @@ def _build_error_result(config: dict, error: Exception, stage: str) -> dict:
     }
 
 
-def _run_worker(config: dict, queue: mp.Queue) -> None:
-    try:
-        result = run(config)
-    except Exception as exc:
-        result = _build_error_result(config, exc, "run")
-    queue.put(result)
-
-
-def run_trial(config: dict, isolate_trials: bool) -> dict:
-    if not isolate_trials:
-        return run(config)
-
-    ctx = mp.get_context("spawn")
-    queue = ctx.Queue()
-    proc = ctx.Process(target=_run_worker, args=(config, queue))
-    proc.start()
-    proc.join()
-
-    try:
-        result = queue.get_nowait()
-    except Exception as exc:
-        result = _build_error_result(config, exc, "subprocess")
-    finally:
-        queue.close()
-        queue.join_thread()
-
-    return result
-
-
 def main() -> None:
     parser = argparse.ArgumentParser()
-    parser.add_argument(
-        "--seed",
-        type=int,
-    )
-    parser.add_argument("--config", type=str)
+    parser.add_argument("--seed", type=int)
+    parser.add_argument("--config", type=str, required=True)
     parser.add_argument("--run-id", type=str)
     parser.add_argument("--space-dir", type=str)
-
+    parser.add_argument("--use-imported", action="store_true")
     args = parser.parse_args()
 
-    if not args.config:
-        raise ValueError("--config is required")
-
-    config_path = _resolve_config_path(args.config)
-    with config_path.open("r") as f:
-        config = yaml.safe_load(f) or {}
-
-    seed = args.seed if args.seed is not None else config.get("seed", 200)
-    models = config["models"]
-    transfer_settings = config["transfer_settings"]
-    output_dir = Path(config["output_dir"])
-    output_dir.mkdir(parents=True, exist_ok=True)
-
+    config = load_yaml(resolve_config_path(args.config))
+    seed = args.seed if args.seed is not None else int(config.get("seed", 200))
+    models = config.get("models") or []
+    transfer_settings = config.get("transfer_settings") or {}
     if not models:
-        raise ValueError("No models specified in config.")
+        raise ValueError("No models specified in config")
     if not transfer_settings:
-        raise ValueError("No transfer_settings specified in config.")
+        raise ValueError("No transfer_settings specified in config")
 
-
-    search_space_value = (
-        args.space_dir
-        if args.space_dir is not None
-        else config.get("search_space_dir", config.get("search_space"))
-    )
+    search_space_value = args.space_dir or config.get("search_space_dir") or config.get("search_space")
     if not search_space_value:
-        raise ValueError("Search space directory is required (use --space-dir or config.search_space_dir).")
+        raise ValueError("Search space directory is required (--space-dir or config.search_space_dir)")
     search_space_dir = Path(str(search_space_value).strip())
     if not search_space_dir.exists():
         raise FileNotFoundError(f"Search space directory not found: {search_space_dir}")
 
+    use_imported = args.use_imported or as_bool(config.get("use_imported", False))
+    models = [m.lower() for m in models]
+    transfer_pairs = list(iter_transfer_pairs(transfer_settings))
+    validate_transfer_pairs(transfer_pairs)
+
+    if use_imported:
+        validate_imported_models(models)
+        validate_imported_files(models, transfer_pairs)
+
+    output_dir = Path(config["output_dir"])
+    run_id = (args.run_id or "").strip() or time.strftime("%m%d_%H%M%S")
+    run_dir = output_dir / run_id
+    result_path = run_dir / f"results_{run_id}_seed{seed}.csv"
+    progress_path = run_dir / "progress.csv"
+
     device = config.get("device", "cuda:0")
+    verbose = int(config.get("verbose", 1))
     wandb_enabled = bool(config.get("wandb", False))
     wandb_project = config.get("wandb_project", "SCGDA_HPTune")
-    verbose = int(config.get("verbose", 1))
+    prefix = config.get("prefix")
     metrics = config.get("metrics") or ["micro_f1", "macro_f1"]
     max_combos = int(config.get("max_combos", 0))
-    prefix = config.get("prefix")
-    isolate_trials = bool(config.get("isolate_trials", True))
 
-    run_id_input = args.run_id if args.run_id is not None else ""
-    run_id = run_id_input.strip() or time.strftime("%m%d_%H%M%S")
-    run_dir = output_dir / run_id
-    run_dir.mkdir(parents=True, exist_ok=True)
-    result_path = run_dir / f"results_{run_id}_seed{seed}.csv"
-
-    # Load already completed experiments for resume capability
-    completed_keys = set()
-    if result_path.exists():
-        try:
-            existing = pd.read_csv(result_path)
-            for _, row in existing.iterrows():
-                hp_id = row.get("hp_id")
-                try:
-                    hp_id = int(hp_id)
-                except Exception:
-                    pass
-                key = (row.get("dataset"), row.get("source"), row.get("target"), 
-                       row.get("model"), hp_id)
-                completed_keys.add(key)
-            print(f"[Seed {seed}] Found {len(completed_keys)} completed experiments, will skip them")
-        except Exception as e:
-            print(f"[Seed {seed}] Warning: Could not read existing results: {e}")
-
-    pre_completed = len(completed_keys)
-    start_epoch = time.time()
-    start_label = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(start_epoch))
-
+    completed_keys = load_completed_keys(result_path, seed)
     combo_cache = {}
     hp_keys = set()
     for dataset in transfer_settings.keys():
         space = load_search_space(search_space_dir, dataset)
+        combos, total = build_combos(space, max_combos)
+        combo_cache[dataset] = {
+            "combos": combos,
+            "total": total,
+            "tuned_params": sorted(space.keys()),
+        }
         hp_keys.update(space.keys())
-        total_combos = 1
-        for vals in space.values():
-            total_combos *= len(vals)
-        combo_cache[dataset] = build_combos(space, max_combos)
-        if max_combos and total_combos > max_combos:
-            print(
-                f"[Seed {seed}] {dataset}: using {len(combo_cache[dataset])}/{total_combos} "
-                f"uniformly sampled HP combinations (max_combos={max_combos})."
-            )
+        if max_combos and total > max_combos:
+            print(f"[Seed {seed}] {dataset}: using {len(combos)}/{total} sampled HP combinations")
 
-    hp_keys_sorted = sorted(hp_keys)
-    sample_dataset = next(iter(transfer_settings.keys()))
-    for model in models:
-        try:
-            base_cfg = build_config(
-                {"data": sample_dataset, "expt": "default", "model": model},
-                update_config={"expt": {"verbose": 0}},
-            )
-            base_model_keys = set(base_cfg.get("model", {}).keys())
-            extra_keys = sorted(set(hp_keys_sorted) - base_model_keys - MODEL_RUNTIME_KEYS)
-            if extra_keys:
-                print(
-                    f"[Seed {seed}] Warning: search-space keys not in base '{model}' config: "
-                    f"{extra_keys}. They will be logged but may be ignored by the model."
-                )
-        except Exception as exc:
-            print(f"[Seed {seed}] Warning: could not validate search space keys for model '{model}': {exc}")
-
-    columns = unique_list(
-        [
-            "run_id",
-            "dataset",
-            "source",
-            "target",
-            "model",
-            "seed",
-            "hp_id",
-        ]
-        + hp_keys_sorted
-        + metrics
-        + ["status", "train_time", "error_type", "error_stage", "error", "device"]
+    hp_keys = sorted(hp_keys)
+    columns = list(
+        dict.fromkeys(
+            [
+                "run_id",
+                "dataset",
+                "source",
+                "target",
+                "model",
+                "base_model",
+                "seed",
+                "config_id",
+                "hp_id",
+                "use_imported",
+                "imported_config",
+                "tuned_params",
+            ]
+            + hp_keys
+            + metrics
+            + ["status", "train_time", "error_type", "error_stage", "error", "device"]
+        )
     )
 
-    # Count total experiments for progress tracking
-    total_experiments = sum(
-        len(combo_cache[dataset]) * len(models)
-        for dataset in transfer_settings.keys()
-        for _ in iter_transfer_pairs({dataset: transfer_settings[dataset]})
-    )
-    current_exp = 0
-    skipped_exp = 0
-    new_processed = 0
-
-    _update_progress(
-        run_id=run_id,
-        seed=seed,
-        total_experiments=total_experiments,
-        pre_completed=pre_completed,
-        new_processed=new_processed,
-        skipped_exp=skipped_exp,
-        start_epoch=start_epoch,
-        start_label=start_label,
-        status="running",
-    )
-
-    for dataset, source, target in iter_transfer_pairs(transfer_settings):
-        combos = combo_cache[dataset]
+    skipped_invalid = 0
+    trials = []
+    for dataset, source, target in transfer_pairs:
         for model in models:
             model_name = f"{prefix}{model}" if prefix else model
-            for hp_id, hp_params in combos:
-                current_exp += 1
-                
-                # Skip already completed experiments
-                exp_key = (dataset, source, target, model_name, hp_id)
-                if exp_key in completed_keys:
-                    skipped_exp += 1
-                    if verbose:
-                        print(f"[Seed {seed}] Skipping {current_exp}/{total_experiments}: already completed")
+            for hp_id, hp_params in combo_cache[dataset]["combos"]:
+                if not combo_is_valid(model, hp_params):
+                    skipped_invalid += 1
                     continue
-                
-                print(f"[Seed {seed}] Running {current_exp}/{total_experiments}: {model_name} hp_id={hp_id} on {dataset} ({source}->{target})")
-                
-                config_setup = {
-                    "data": dataset,
-                    "expt": "default",
-                    "model": model,
-                }
-
-                update_config = {
-                    "expt": {
-                        "source": source,
-                        "target": target,
-                        "device": device,
-                        "wandb_enabled": wandb_enabled,
-                        "project": wandb_project,
-                        "seed": seed,
-                        "verbose": verbose,
-                        "metrics": metrics,
-                    },
-                    "model": hp_params,
-                }
-
-                try:
-                    run_config = build_config(config_setup, update_config)
-                    result = run_trial(run_config, isolate_trials)
-                except Exception as exc:
-                    fallback_config = {
-                        "expt": update_config["expt"],
-                        "model": {"name": model_name},
-                    }
-                    result = _build_error_result(fallback_config, exc, "build_or_run")
-
-                row = dict(result)
-                row.update(
-                    {
-                        "run_id": run_id,
-                        "dataset": dataset,
-                        "source": source,
-                        "target": target,
-                        "model": model_name,
-                        "seed": seed,
-                        "hp_id": hp_id,
-                    }
+                trials.append(
+                    (
+                        dataset,
+                        source,
+                        target,
+                        model,
+                        model_name,
+                        hp_id,
+                        hp_params,
+                        combo_cache[dataset]["tuned_params"],
+                    )
                 )
 
-                for key in hp_keys_sorted:
-                    row[key] = hp_params.get(key)
+    if skipped_invalid:
+        print(f"[Seed {seed}] Skipped {skipped_invalid} invalid model/HP combinations")
 
-                append_row_csv(result_path, row, columns)
-                new_processed += 1
-                _update_progress(
-                    run_id=run_id,
-                    seed=seed,
-                    total_experiments=total_experiments,
-                    pre_completed=pre_completed,
-                    new_processed=new_processed,
-                    skipped_exp=skipped_exp,
-                    start_epoch=start_epoch,
-                    start_label=start_label,
-                    status="running",
-                )
+    process_start = time.strftime("%Y-%m-%d %H:%M:%S")
+    processed = 0
+    skipped = 0
+    total_trials = len(trials)
+    update_progress(progress_path, seed, process_start, completed=0, total=total_trials)
 
-    _update_progress(
-        run_id=run_id,
-        seed=seed,
-        total_experiments=total_experiments,
-        pre_completed=pre_completed,
-        new_processed=new_processed,
-        skipped_exp=skipped_exp,
-        start_epoch=start_epoch,
-        start_label=start_label,
-        status="completed",
-    )
+    for idx, (dataset, source, target, model, model_name, hp_id, hp_params, tuned_params) in enumerate(trials, start=1):
+        key = (dataset, source, target, model_name, hp_id)
+        if key in completed_keys:
+            skipped += 1
+            update_progress(progress_path, seed, process_start, completed=processed + skipped, total=total_trials)
+            if verbose:
+                print(f"[Seed {seed}] Skipping {idx}/{total_trials}: already completed")
+            continue
 
-    print(f"[Seed {seed}] HP tuning complete! Ran {current_exp - skipped_exp} experiments, skipped {skipped_exp}")
+        print(f"[Seed {seed}] Running {idx}/{total_trials}: {model_name} hp_id={hp_id} on {dataset} ({source}->{target})")
+
+        imported_path = ""
+        merged_model_params = dict(hp_params)
+        update_config = {
+            "expt": {
+                "source": source,
+                "target": target,
+                "device": device,
+                "wandb_enabled": wandb_enabled,
+                "project": wandb_project,
+                "seed": seed,
+                "verbose": verbose,
+                "metrics": metrics,
+            },
+            "model": merged_model_params,
+        }
+
+        try:
+            if use_imported:
+                imported_cfg, imported_path = load_imported_config(model=model, dataset=dataset, source=source, target=target)
+                merged_model_params = {**imported_cfg, **hp_params}
+                update_config["model"] = merged_model_params
+
+            run_config = build_config(
+                {"data": dataset, "expt": "default", "model": model},
+                update_config,
+            )
+            result = run(run_config, from_pygda=use_imported)
+        except Exception as exc:
+            result = build_error_result(
+                {"expt": update_config["expt"], "model": {"name": model_name}},
+                exc,
+                "build_or_run",
+            )
+
+        row = {
+            **dict(result),
+            "run_id": run_id,
+            "dataset": dataset,
+            "source": source,
+            "target": target,
+            "model": model_name,
+            "base_model": model,
+            "seed": seed,
+            "config_id": hp_id,
+            "hp_id": hp_id,
+            "use_imported": int(use_imported),
+            "imported_config": imported_path,
+            "tuned_params": "|".join(tuned_params),
+        }
+        for k in hp_keys:
+            row[k] = hp_params.get(k)
+
+        append_row_csv(result_path, row, columns)
+        processed += 1
+        update_progress(progress_path, seed, process_start, completed=processed + skipped, total=total_trials)
+
+    print(f"[Seed {seed}] HP tuning complete! Ran {processed} experiments, skipped {skipped}")
     print(f"[Seed {seed}] Results saved to {result_path}")
 
 

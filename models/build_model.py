@@ -23,6 +23,11 @@ from models.ours.test.test import Test
 
 # Imported models from pygda
 from models.imported.a2gnn.a2gnn import A2GNN as A2GNN_imported
+from models.imported.adagcn.adagcn import AdaGCN as AdaGCN_imported
+from models.imported.dgsda.dgsda import DGSDA as DGSDA_imported
+from models.imported.specreg.specreg import SpecReg as SpecReg_imported
+from models.imported.kbl.kbl import KBL as KBL_imported
+from models.imported.pairalign.pairalign import PairAlign as PairAlign_imported
 
 
 from utils.expt_utils import print_string
@@ -34,6 +39,11 @@ def build_model(config: dict, from_pygda: bool = False):
 
     imported_models_dict = {
         "a2gnn": A2GNN_imported,
+        "adagcn": AdaGCN_imported,
+        "dgsda": DGSDA_imported,
+        "specreg": SpecReg_imported,
+        "kbl": KBL_imported,
+        "pairalign": PairAlign_imported,
     }
 
     models_dict = {

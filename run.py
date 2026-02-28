@@ -12,7 +12,7 @@ torch.set_num_threads(4)
 
 from data.build_dataset import build_dataset
 from models.build_model import build_model
-from utils.pygda_utils import build_pygda_model
+# from utils.pygda_utils import build_pygda_model
 from utils.train_utils.metrics import BaseMetric
 from utils.expt_utils import set_seed
 

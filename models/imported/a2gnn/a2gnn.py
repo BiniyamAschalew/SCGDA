@@ -1,8 +1,3 @@
-import torch
-import torch.nn.functional as F
-import time
-import numpy as np
-
 from pygda.models import A2GNN as A2GNN_imported
 from models.base_model import BaseGDA
 
@@ -30,6 +25,9 @@ class A2GNN(BaseGDA):
         mode = self.config["model"].get("mode", "node")
 
         device = self.config["expt"]["device"]
+        batch_size = self.config["model"].get("batch_size", 0)
+        num_neigh = self.config["model"].get("num_neigh", -1)
+        verbose = self.config["expt"].get("verbose", 2)
 
         self.model = A2GNN_imported(
             in_dim = in_dim,
@@ -38,6 +36,7 @@ class A2GNN(BaseGDA):
             mode = mode,
             num_layers = num_layers,
             dropout=dropout,
+            act=self.act,
             s_pnums = s_pnums,
             t_pnums = t_pnums,
             adv = adv,
@@ -46,7 +45,10 @@ class A2GNN(BaseGDA):
             epoch = epochs,
             lr = lr,
             weight_decay = weight_decay,
-            device = device
+            device = device,
+            batch_size = batch_size,
+            num_neigh = num_neigh,
+            verbose = verbose,
         )
 
     def init_model(self):

@@ -9,7 +9,7 @@ import pandas as pd
 
 BASELINES = {"gnn", "dane", "simgda", 
              "grade", "a2gnn", "strurw", 
-             "dgsda", "specreg"}
+             "dgsda", "specreg", "kbl", "pairalign"}
 MODELS = {
     0:"gnn",   1: "dane",
     2:"simgda",   3:"grade",
@@ -21,6 +21,7 @@ MODELS = {
     16:"dlit", 17:"simgda_cheb",
     18:"scgda", 19:"test",
     20:"bdlite",
+    21:"kbl", 22:"pairalign",
     }
 
 
@@ -39,12 +40,10 @@ REPEATS = 1
 role_type = ROLE_TYPES[2]
 
 SEED = 0
-EPOCHS = 200
-DEVICE = "cuda:4"
+# EPOCHS = 200
+DEVICE = "cuda:0"
 
-USE_TUNED = 2
-USE_IMPORTED = False
-
+USE_TUNED = 0
 BORROW = None
 # BORROW = "simgda"
 # BORROW = "dgsda"
@@ -54,7 +53,7 @@ WANDB = False
 FROM_PYGDA = True
 
 id = {
-    "model": [4],
+    "model": [6],
     "dataset": [0],
     "source": [0],
     "target": [1],
