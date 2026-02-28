@@ -71,13 +71,36 @@ def _append_performance_csv(path: Path, time_id: str, metrics_dict: dict) -> Non
         new_row.to_csv(path, index=False)
 
 
+def _collect_csv_files_from_run_dir(run_dir: Path) -> list:
+    if not run_dir.exists() or not run_dir.is_dir():
+        return []
+    return sorted(run_dir.glob("*.csv"))
+
+
+def _find_latest_run_dir(results_dir: Path) -> Path | None:
+    if not results_dir.exists() or not results_dir.is_dir():
+        return None
+    run_dirs = [path for path in results_dir.iterdir() if path.is_dir()]
+    if not run_dirs:
+        return None
+    run_dirs.sort(key=lambda p: p.stat().st_mtime, reverse=True)
+    return run_dirs[0]
+
+
+def _load_from_csv_files(csv_files: list) -> pd.DataFrame:
+    if not csv_files:
+        raise FileNotFoundError("No result files found.")
+    dfs = [pd.read_csv(path) for path in csv_files]
+    return pd.concat(dfs, ignore_index=True)
+
+
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument(
         "--results",
         type=str,
         default=None,
-        help="Path to results CSV file, or directory containing seed-based result files (results_*_seed*.csv)",
+        help="Path to results CSV file, run-id directory, or parent results directory.",
     )
     parser.add_argument(
         "--results-dir",
@@ -102,55 +125,70 @@ def main() -> None:
     if args.results:
         results_path = Path(args.results)
         if results_path.is_dir():
-            # Directory: load all seed files
-            csv_files = sorted(results_path.glob("results_*_seed*.csv"))
+            # If run-id is provided and {results}/{run-id} exists, treat that as the run folder.
+            run_dir = results_path / args.run_id if args.run_id and (results_path / args.run_id).is_dir() else results_path
+            csv_files = _collect_csv_files_from_run_dir(run_dir)
             if not csv_files:
-                # Fallback to old format
-                csv_files = sorted(results_path.glob("results_*.csv"))
+                # Backward compatibility: old flat layout under the provided directory.
+                csv_files = sorted(results_path.glob("results_*_seed*.csv"))
+                if not csv_files:
+                    csv_files = sorted(results_path.glob("results_*.csv"))
             if not csv_files:
                 raise FileNotFoundError(f"No result files found in: {results_path}")
-            dfs = [pd.read_csv(f) for f in csv_files]
-            df = pd.concat(dfs, ignore_index=True)
-            print(f"Loaded {len(csv_files)} result files from {results_path}")
+            df = _load_from_csv_files(csv_files)
+            print(f"Loaded {len(csv_files)} result files from {run_dir if run_dir.exists() else results_path}")
         else:
             if not results_path.exists():
                 raise FileNotFoundError(f"Results file not found: {results_path}")
             df = pd.read_csv(results_path)
     else:
-        # Search in results_dir for files matching run_id
+        # Search in results_dir for a run-id subfolder first.
         results_dir = Path(args.results_dir)
         csv_files = []
+        loaded_from = results_dir
 
         if args.run_id:
-            csv_files = sorted(results_dir.glob(f"results_{args.run_id}_seed*.csv"))
-            if not csv_files:
-                csv_files = sorted(results_dir.glob(f"results_{args.run_id}.csv"))
-        else:
-            seed_files = sorted(
-                results_dir.glob("results_*_seed*.csv"),
-                key=lambda p: p.stat().st_mtime,
-                reverse=True,
-            )
-            if seed_files:
-                latest = seed_files[0].name
-                latest_run_id = latest.replace("results_", "").split("_seed")[0]
-                csv_files = sorted(results_dir.glob(f"results_{latest_run_id}_seed*.csv"))
+            run_dir = results_dir / args.run_id
+            csv_files = _collect_csv_files_from_run_dir(run_dir)
+            if csv_files:
+                loaded_from = run_dir
             else:
-                # Old single-file format fallback.
-                old_files = sorted(
-                    results_dir.glob("results_*.csv"),
+                # Backward compatibility for old flat layout.
+                csv_files = sorted(results_dir.glob(f"results_{args.run_id}_seed*.csv"))
+                if not csv_files:
+                    csv_files = sorted(results_dir.glob(f"results_{args.run_id}.csv"))
+        else:
+            latest_run_dir = _find_latest_run_dir(results_dir)
+            if latest_run_dir is not None:
+                csv_files = _collect_csv_files_from_run_dir(latest_run_dir)
+                if csv_files:
+                    loaded_from = latest_run_dir
+
+            if not csv_files:
+                # Backward compatibility for old flat layout.
+                seed_files = sorted(
+                    results_dir.glob("results_*_seed*.csv"),
                     key=lambda p: p.stat().st_mtime,
                     reverse=True,
                 )
-                if old_files:
-                    csv_files = [old_files[0]]
+                if seed_files:
+                    latest = seed_files[0].name
+                    latest_run_id = latest.replace("results_", "").split("_seed")[0]
+                    csv_files = sorted(results_dir.glob(f"results_{latest_run_id}_seed*.csv"))
+                else:
+                    old_files = sorted(
+                        results_dir.glob("results_*.csv"),
+                        key=lambda p: p.stat().st_mtime,
+                        reverse=True,
+                    )
+                    if old_files:
+                        csv_files = [old_files[0]]
         
         if not csv_files:
             raise FileNotFoundError(f"No result files found in: {results_dir}")
         
-        dfs = [pd.read_csv(f) for f in csv_files]
-        df = pd.concat(dfs, ignore_index=True)
-        print(f"Loaded {len(csv_files)} result files: {[f.name for f in csv_files]}")
+        df = _load_from_csv_files(csv_files)
+        print(f"Loaded {len(csv_files)} result files from {loaded_from}: {[f.name for f in csv_files]}")
 
     if df.empty:
         raise ValueError("Results file(s) are empty")

@@ -89,11 +89,11 @@ def run(config: dict, from_pygda: bool = False) -> dict:
 
         # build and train the model
         stage = "build_model"
-        model = build_model(config)
+        model = build_model(config, from_pygda=from_pygda)
 
         # if the model is from pygda module
-        if from_pygda:
-            model = build_pygda_model(config)
+        # if from_pygda:
+        #     model = build_pygda_model(config)
 
         stage = "fit"
         model.fit(source_data, target_data)

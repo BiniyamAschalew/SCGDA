@@ -21,12 +21,20 @@ from models.ours.bdlite.bdlite import BDlite
 from models.ours.scgda.scgda import SCGDA
 from models.ours.test.test import Test
 
+# Imported models from pygda
+from models.imported.a2gnn.a2gnn import A2GNN as A2GNN_imported
+
+
 from utils.expt_utils import print_string
 
-def build_model(config: dict):
+def build_model(config: dict, from_pygda: bool = False):
     
     model_name = config["model"]["name"].lower()
     model = None
+
+    imported_models_dict = {
+        "a2gnn": A2GNN_imported,
+    }
 
     models_dict = {
         "gnn": GNN,
@@ -52,11 +60,17 @@ def build_model(config: dict):
         "test": Test,
     }
 
-    if model_name in models_dict:
-        model = models_dict[model_name](config)
+    if from_pygda:
+        if model_name in imported_models_dict:
+            model = imported_models_dict[model_name](config)
+        else:
+            raise ValueError(f"Invalid model name {model_name} for imported models")
+    else:   
+        if model_name in models_dict:
+            model = models_dict[model_name](config)
 
-    else:
-        raise ValueError(f"Invalid model name {model_name}")
+        else:
+            raise ValueError(f"Invalid model name {model_name}")
 
     print_string(f"=== {model_name} ===")
     return model

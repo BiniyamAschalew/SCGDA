@@ -7,7 +7,7 @@ from models.__layers.build_layer import build_layer, build_activation
 from models.__layers.reverse_layer import GradReverse
 
 
-
+ 
 class A2GNNBase(nn.Module):
 
     def __init__(self, config: dict):

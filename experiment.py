@@ -40,19 +40,21 @@ role_type = ROLE_TYPES[2]
 
 SEED = 0
 EPOCHS = 200
-DEVICE = "cuda:3"
+DEVICE = "cuda:4"
 
 USE_TUNED = 2
+USE_IMPORTED = False
 
+BORROW = None
 # BORROW = "simgda"
-BORROW = "dgsda"
+# BORROW = "dgsda"
 
 USE_DEFAULT = False
 WANDB = False
-FROM_PYGDA = False
+FROM_PYGDA = True
 
 id = {
-    "model": [7],
+    "model": [4],
     "dataset": [0],
     "source": [0],
     "target": [1],

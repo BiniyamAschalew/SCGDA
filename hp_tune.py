@@ -12,11 +12,27 @@ from itertools import product
 from pathlib import Path
 
 import yaml
-
 from utils.config_utils import build_config
 from run import run
+import pandas as pd
 
 MODEL_RUNTIME_KEYS = {"epochs"}
+PROGRESS_DIR = Path("__hps__/tuned/progress")
+PROGRESS_FIELDS = [
+    "run_id",
+    "seed",
+    "status",
+    "start_time",
+    "last_update",
+    "elapsed_sec",
+    "completed",
+    "remaining",
+    "total",
+    "pre_completed",
+    "new_processed",
+    "skipped",
+    "eta_sec",
+]
 
 
 def _resolve_config_path(config_value: str) -> Path:
@@ -129,6 +145,132 @@ def append_row_csv(path: Path, row: dict, columns: list) -> None:
             fcntl.flock(f, fcntl.LOCK_UN)
 
 
+def _format_duration(seconds) -> str:
+    if seconds is None:
+        return "N/A"
+    try:
+        seconds = int(max(0, round(float(seconds))))
+    except Exception:
+        return "N/A"
+    hours, rem = divmod(seconds, 3600)
+    minutes, secs = divmod(rem, 60)
+    return f"{hours:02d}:{minutes:02d}:{secs:02d}"
+
+
+def _update_progress(
+    run_id: str,
+    seed: int,
+    total_experiments: int,
+    pre_completed: int,
+    new_processed: int,
+    skipped_exp: int,
+    start_epoch: float,
+    start_label: str,
+    status: str,
+) -> None:
+    PROGRESS_DIR.mkdir(parents=True, exist_ok=True)
+    csv_path = PROGRESS_DIR / f"{run_id}.csv"
+    txt_path = PROGRESS_DIR / f"{run_id}.txt"
+
+    now_epoch = time.time()
+    now_label = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(now_epoch))
+    elapsed = now_epoch - start_epoch
+
+    completed = min(total_experiments, pre_completed + new_processed)
+    remaining = max(0, total_experiments - completed)
+    eta_sec = None
+    if new_processed > 0:
+        avg_sec_per_run = elapsed / new_processed
+        eta_sec = avg_sec_per_run * remaining
+
+    current_row = {
+        "run_id": run_id,
+        "seed": str(seed),
+        "status": status,
+        "start_time": start_label,
+        "last_update": now_label,
+        "elapsed_sec": f"{elapsed:.3f}",
+        "completed": str(completed),
+        "remaining": str(remaining),
+        "total": str(total_experiments),
+        "pre_completed": str(pre_completed),
+        "new_processed": str(new_processed),
+        "skipped": str(skipped_exp),
+        "eta_sec": "" if eta_sec is None else f"{eta_sec:.3f}",
+    }
+
+    with csv_path.open("a+", newline="") as f:
+        fcntl.flock(f, fcntl.LOCK_EX)
+        try:
+            f.seek(0)
+            existing_rows = []
+            if f.read(1):
+                f.seek(0)
+                existing_rows = list(csv.DictReader(f))
+
+            by_seed = {row.get("seed", ""): row for row in existing_rows}
+            by_seed[str(seed)] = current_row
+
+            rows = [
+                by_seed[key]
+                for key in sorted(
+                    by_seed.keys(),
+                    key=lambda x: int(x) if str(x).isdigit() else str(x),
+                )
+            ]
+
+            f.seek(0)
+            f.truncate()
+            writer = csv.DictWriter(f, fieldnames=PROGRESS_FIELDS)
+            writer.writeheader()
+            writer.writerows(rows)
+            f.flush()
+            os.fsync(f.fileno())
+
+            overall_completed = sum(int(row.get("completed", 0) or 0) for row in rows)
+            overall_total = sum(int(row.get("total", 0) or 0) for row in rows)
+            overall_remaining = max(0, overall_total - overall_completed)
+
+            eta_values = []
+            for row in rows:
+                value = row.get("eta_sec", "")
+                if not value:
+                    continue
+                try:
+                    eta_values.append(float(value))
+                except Exception:
+                    continue
+            overall_eta = max(eta_values) if eta_values else None
+
+            lines = [
+                f"run_id: {run_id}",
+                f"updated_at: {now_label}",
+                f"overall_completed: {overall_completed}/{overall_total}",
+                f"overall_remaining: {overall_remaining}",
+                f"overall_eta: {_format_duration(overall_eta)}",
+                "",
+                "per_seed:",
+            ]
+
+            for row in rows:
+                lines.append(
+                    "  "
+                    + f"seed={row.get('seed')} "
+                    + f"status={row.get('status')} "
+                    + f"completed={row.get('completed')}/{row.get('total')} "
+                    + f"remaining={row.get('remaining')} "
+                    + f"elapsed={_format_duration(row.get('elapsed_sec'))} "
+                    + f"eta={_format_duration(row.get('eta_sec') if row.get('eta_sec') else None)} "
+                    + f"updated={row.get('last_update')}"
+                )
+
+            tmp_path = txt_path.with_suffix(".txt.tmp")
+            tmp_path.write_text("\n".join(lines) + "\n")
+            os.replace(tmp_path, txt_path)
+        finally:
+            fcntl.flock(f, fcntl.LOCK_UN)
+
+
 def _build_error_result(config: dict, error: Exception, stage: str) -> dict:
     expt = config.get("expt", {}) if isinstance(config, dict) else {}
     model = config.get("model", {}) if isinstance(config, dict) else {}
@@ -228,13 +370,14 @@ def main() -> None:
 
     run_id_input = args.run_id if args.run_id is not None else ""
     run_id = run_id_input.strip() or time.strftime("%m%d_%H%M%S")
-    result_path = output_dir / f"results_{run_id}_seed{seed}.csv"
+    run_dir = output_dir / run_id
+    run_dir.mkdir(parents=True, exist_ok=True)
+    result_path = run_dir / f"results_{run_id}_seed{seed}.csv"
 
     # Load already completed experiments for resume capability
     completed_keys = set()
     if result_path.exists():
         try:
-            import pandas as pd
             existing = pd.read_csv(result_path)
             for _, row in existing.iterrows():
                 hp_id = row.get("hp_id")
@@ -248,6 +391,10 @@ def main() -> None:
             print(f"[Seed {seed}] Found {len(completed_keys)} completed experiments, will skip them")
         except Exception as e:
             print(f"[Seed {seed}] Warning: Could not read existing results: {e}")
+
+    pre_completed = len(completed_keys)
+    start_epoch = time.time()
+    start_label = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(start_epoch))
 
     combo_cache = {}
     hp_keys = set()
@@ -305,6 +452,19 @@ def main() -> None:
     )
     current_exp = 0
     skipped_exp = 0
+    new_processed = 0
+
+    _update_progress(
+        run_id=run_id,
+        seed=seed,
+        total_experiments=total_experiments,
+        pre_completed=pre_completed,
+        new_processed=new_processed,
+        skipped_exp=skipped_exp,
+        start_epoch=start_epoch,
+        start_label=start_label,
+        status="running",
+    )
 
     for dataset, source, target in iter_transfer_pairs(transfer_settings):
         combos = combo_cache[dataset]
@@ -370,6 +530,30 @@ def main() -> None:
                     row[key] = hp_params.get(key)
 
                 append_row_csv(result_path, row, columns)
+                new_processed += 1
+                _update_progress(
+                    run_id=run_id,
+                    seed=seed,
+                    total_experiments=total_experiments,
+                    pre_completed=pre_completed,
+                    new_processed=new_processed,
+                    skipped_exp=skipped_exp,
+                    start_epoch=start_epoch,
+                    start_label=start_label,
+                    status="running",
+                )
+
+    _update_progress(
+        run_id=run_id,
+        seed=seed,
+        total_experiments=total_experiments,
+        pre_completed=pre_completed,
+        new_processed=new_processed,
+        skipped_exp=skipped_exp,
+        start_epoch=start_epoch,
+        start_label=start_label,
+        status="completed",
+    )
 
     print(f"[Seed {seed}] HP tuning complete! Ran {current_exp - skipped_exp} experiments, skipped {skipped_exp}")
     print(f"[Seed {seed}] Results saved to {result_path}")
