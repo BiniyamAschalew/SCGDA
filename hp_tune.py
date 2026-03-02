@@ -15,6 +15,13 @@ from utils.config_utils import build_config
 
 PROGRESS_FIELDS = ["seed", "start_time", "completed", "total"]
 SUPPORTED_IMPORTED_MODELS = {"a2gnn", "adagcn", "dgsda", "specreg", "kbl", "pairalign"}
+CUDA_MEM_FIELDS = [
+    "cuda_device_index",
+    "cuda_allocated_mb",
+    "cuda_reserved_mb",
+    "cuda_max_allocated_mb",
+    "cuda_max_reserved_mb",
+]
 
 
 def resolve_config_path(config_value: str) -> Path:
@@ -39,8 +46,8 @@ def as_bool(value) -> bool:
     return str(value).strip().lower() in {"1", "true", "yes", "y", "on"}
 
 
-def load_search_space(space_dir: Path, dataset: str) -> dict:
-    path = space_dir / f"{dataset.lower()}.yaml"
+def load_search_space(space_path: Path, dataset: str) -> dict:
+    path = space_path if space_path.is_file() else space_path / f"{dataset.lower()}.yaml"
     if not path.exists():
         raise FileNotFoundError(f"Search space file not found: {path}")
 
@@ -253,10 +260,10 @@ def main() -> None:
 
     search_space_value = args.space_dir or config.get("search_space_dir") or config.get("search_space")
     if not search_space_value:
-        raise ValueError("Search space directory is required (--space-dir or config.search_space_dir)")
-    search_space_dir = Path(str(search_space_value).strip())
-    if not search_space_dir.exists():
-        raise FileNotFoundError(f"Search space directory not found: {search_space_dir}")
+        raise ValueError("Search space path is required (--space-dir or config.search_space_dir)")
+    search_space_path = Path(str(search_space_value).strip())
+    if not search_space_path.exists():
+        raise FileNotFoundError(f"Search space path not found: {search_space_path}")
 
     use_imported = args.use_imported or as_bool(config.get("use_imported", False))
     models = [m.lower() for m in models]
@@ -285,7 +292,7 @@ def main() -> None:
     combo_cache = {}
     hp_keys = set()
     for dataset in transfer_settings.keys():
-        space = load_search_space(search_space_dir, dataset)
+        space = load_search_space(search_space_path, dataset)
         combos, total = build_combos(space, max_combos)
         combo_cache[dataset] = {
             "combos": combos,
@@ -316,6 +323,7 @@ def main() -> None:
             + hp_keys
             + metrics
             + ["status", "train_time", "error_type", "error_stage", "error", "device"]
+            + CUDA_MEM_FIELDS
         )
     )
 

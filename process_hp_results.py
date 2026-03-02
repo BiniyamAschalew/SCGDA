@@ -30,6 +30,13 @@ META_COLS = {
     "error_stage",
     "error",
     "device",
+    "cur_time",
+    "repeat",
+    "cuda_device_index",
+    "cuda_allocated_mb",
+    "cuda_reserved_mb",
+    "cuda_max_allocated_mb",
+    "cuda_max_reserved_mb",
 }
 
 
@@ -47,6 +54,16 @@ def _resolve_time_id(df: pd.DataFrame, explicit: str) -> str:
         if len(unique) == 1:
             return str(unique[0])
     return time.strftime("%m%d_%H%M%S")
+
+
+def _resolve_run_folder(df: pd.DataFrame, explicit_run_id: str | None, fallback: str) -> str:
+    if explicit_run_id:
+        return explicit_run_id
+    if "run_id" in df.columns:
+        unique = df["run_id"].dropna().unique()
+        if len(unique) == 1:
+            return str(unique[0])
+    return fallback
 
 
 def _write_yaml(path: Path, payload: dict) -> None:
@@ -186,6 +203,116 @@ def _load_from_csv_files(csv_files: list) -> pd.DataFrame:
     return pd.concat(dfs, ignore_index=True)
 
 
+def _infer_hp_cols(df: pd.DataFrame, metrics: set) -> list:
+    hp_candidates = [c for c in df.columns if c not in META_COLS and c not in metrics]
+    if "tuned_params" not in df.columns:
+        return hp_candidates
+
+    tuned = []
+    seen = set()
+    for value in df["tuned_params"].dropna():
+        for key in _parse_tuned_params(value, []):
+            if key in df.columns and key not in seen:
+                tuned.append(key)
+                seen.add(key)
+
+    if not tuned:
+        return hp_candidates
+
+    # Keep tuned parameter order, then append any extra discovered HP columns.
+    for col in hp_candidates:
+        if col not in seen:
+            tuned.append(col)
+    return tuned
+
+
+def _build_grouped_config_metrics(df: pd.DataFrame, metrics: set, hp_cols: list) -> tuple[pd.DataFrame, list]:
+    key_cols = ["model", "dataset", "source", "target", "hp_id"]
+    if "config_id" in df.columns:
+        key_cols.append("config_id")
+
+    metric_cols = sorted([col for col in metrics if col in df.columns])
+    agg_dict = {col: (col, "mean") for col in metric_cols}
+    for col in metric_cols:
+        agg_dict[f"{col}_std"] = (col, "std")
+    if "seed" in df.columns:
+        agg_dict["seeds"] = ("seed", "nunique")
+    else:
+        agg_dict["seeds"] = (metric_cols[0], "size")
+
+    grouped = df.groupby(key_cols, dropna=False, as_index=False).agg(**agg_dict)
+
+    if hp_cols:
+        hp_values = df.groupby(key_cols, dropna=False, as_index=False)[hp_cols].first()
+        grouped = grouped.merge(hp_values, on=key_cols, how="left")
+
+    return grouped, key_cols
+
+
+def _scenario_label(row: pd.Series) -> str:
+    return f"{row['dataset']}:{row['source']}->{row['target']}"
+
+
+def _save_benchmark_outputs(best_rows: pd.DataFrame, metric: str, metrics: set, out_dir: Path) -> tuple[Path, Path, Path]:
+    out_dir.mkdir(parents=True, exist_ok=True)
+
+    best = best_rows.copy()
+    best["scenario"] = best.apply(_scenario_label, axis=1)
+    best = best.sort_values(["dataset", "source", "target", "model"]).reset_index(drop=True)
+
+    metric_cols = [col for col in sorted(metrics) if col in best.columns]
+    metric_std_cols = [f"{col}_std" for col in metric_cols if f"{col}_std" in best.columns]
+    front_cols = ["dataset", "source", "target", "scenario", "model", "hp_id", "config_id", "seeds"] + metric_cols + metric_std_cols
+    ordered_cols = [col for col in front_cols if col in best.columns] + [col for col in best.columns if col not in front_cols]
+    best = best[ordered_cols]
+
+    index_cols = ["dataset", "source", "target", "scenario"]
+    pivot_mean = best.pivot_table(
+        index=index_cols,
+        columns="model",
+        values=metric,
+        aggfunc="first",
+    )
+    pivot_mean.columns = [f"{col}_mean" for col in pivot_mean.columns]
+
+    pivot = pivot_mean
+    metric_std_col = f"{metric}_std"
+    if metric_std_col in best.columns:
+        pivot_std = best.pivot_table(
+            index=index_cols,
+            columns="model",
+            values=metric_std_col,
+            aggfunc="first",
+        )
+        pivot_std.columns = [f"{col}_std" for col in pivot_std.columns]
+        pivot = pivot.join(pivot_std, how="left")
+
+    pivot = pivot.reset_index().sort_values(["dataset", "source", "target"])
+
+    summary_agg = {"n_scenarios": ("scenario", "nunique"), "avg_seeds": ("seeds", "mean")}
+    for col in metric_cols:
+        summary_agg[col] = (col, "mean")
+    for col in metric_std_cols:
+        summary_agg[col] = (col, "mean")
+    model_summary = best.groupby("model", as_index=False).agg(**summary_agg)
+    sort_col = metric if metric in model_summary.columns else "model"
+    model_summary = model_summary.sort_values(sort_col, ascending=(sort_col == "model")).reset_index(drop=True)
+
+    for frame in (best, pivot, model_summary):
+        numeric_cols = frame.select_dtypes(include=["number"]).columns
+        frame[numeric_cols] = frame[numeric_cols].round(6)
+
+    best_path = out_dir / "best_config_per_scenario.csv"
+    pivot_path = out_dir / f"benchmark_{metric}.csv"
+    summary_path = out_dir / "model_summary.csv"
+
+    best.to_csv(best_path, index=False)
+    pivot.to_csv(pivot_path, index=False)
+    model_summary.to_csv(summary_path, index=False)
+
+    return best_path, pivot_path, summary_path
+
+
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument(
@@ -210,6 +337,12 @@ def main() -> None:
     parser.add_argument("--metrics", type=str, default="micro_f1,macro_f1")
     parser.add_argument("--output-root", type=str, default="__hps__/tuned")
     parser.add_argument("--time-id", type=str, default="")
+    parser.add_argument(
+        "--benchmark-dir",
+        type=str,
+        default="__saved__/results/benchmark",
+        help="Benchmark root directory. Results are written to <benchmark-dir>/<run_id>/.",
+    )
 
     args = parser.parse_args()
 
@@ -297,27 +430,32 @@ def main() -> None:
 
     time_id = _resolve_time_id(df, args.time_id)
 
+    for col in metrics:
+        if col in df.columns:
+            df[col] = pd.to_numeric(df[col], errors="coerce")
+
     df = df[df.get("status", "ok") == "ok"].copy()
     df = df[pd.notna(df[metric])]
 
     if df.empty:
         raise ValueError("No successful rows found after filtering.")
 
-    hp_cols = [c for c in df.columns if c not in META_COLS and c not in metrics]
+    hp_cols = _infer_hp_cols(df, metrics)
 
-    group_cols = ["model", "dataset", "source", "target", "hp_id"] + hp_cols
-    grouped = df.groupby(group_cols, dropna=False)[metric].mean().reset_index()
-
-    # Also compute mean for all metrics for reporting
-    all_metrics_grouped = df.groupby(group_cols, dropna=False)[list(metrics)].mean().reset_index()
+    grouped, key_cols = _build_grouped_config_metrics(df, metrics, hp_cols)
 
     best_rows = (
-        grouped.sort_values(metric, ascending=False)
+        grouped.sort_values([metric, "seeds"], ascending=[False, False])
         .groupby(["model", "dataset", "source", "target"], as_index=False)
         .head(1)
+        .reset_index(drop=True)
     )
 
     output_root = Path(args.output_root)
+    benchmark_base = Path(args.benchmark_dir).expanduser()
+    run_folder = _resolve_run_folder(df, args.run_id, time_id)
+    benchmark_out_dir = benchmark_base / run_folder
+    best_path, pivot_path, summary_path = _save_benchmark_outputs(best_rows, metric, metrics, benchmark_out_dir)
 
     for _, row in best_rows.iterrows():
         sample_mask = (
@@ -327,6 +465,8 @@ def main() -> None:
             (df["target"] == row["target"]) &
             (df["hp_id"] == row["hp_id"])
         )
+        if "config_id" in key_cols and "config_id" in df.columns:
+            sample_mask = sample_mask & (df["config_id"] == row["config_id"])
         if not sample_mask.any():
             continue
         sample_row = df.loc[sample_mask].iloc[0]
@@ -342,21 +482,14 @@ def main() -> None:
         _write_yaml(out_dir / f"{time_id}.yaml", model_payload)
         _write_yaml(out_dir / "best.yaml", model_payload)
 
-        # Get metric values for this best config
-        mask = (
-            (all_metrics_grouped["model"] == row["model"]) &
-            (all_metrics_grouped["dataset"] == row["dataset"]) &
-            (all_metrics_grouped["source"] == row["source"]) &
-            (all_metrics_grouped["target"] == row["target"]) &
-            (all_metrics_grouped["hp_id"] == row["hp_id"])
-        )
-        metrics_row = all_metrics_grouped.loc[mask]
-        
-        if not metrics_row.empty:
-            metrics_dict = {m: float(metrics_row[m].iloc[0]) for m in metrics if m in metrics_row.columns}
+        metrics_dict = {m: float(row[m]) for m in metrics if m in row.index and pd.notna(row[m])}
+        if metrics_dict:
             _append_performance_csv(out_dir / "performance.csv", time_id, metrics_dict)
 
     print(f"Saved best configs to {output_root}")
+    print(f"Saved: {best_path}")
+    print(f"Saved: {pivot_path}")
+    print(f"Saved: {summary_path}")
 
 
 if __name__ == "__main__":

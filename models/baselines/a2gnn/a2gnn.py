@@ -136,8 +136,8 @@ class A2GNN(BaseGDA):
         end_time = time.time()
         training_time = end_time - start_time
 
-        if self.verbose >= 1:
-            print(f"== Best Model from Epoch {self.best_epoch+1:03d} with Val Micro-F1: {self.best_val:.4f} ==")
+        # if self.verbose >= 1:
+        #     print(f"== Best Model from Epoch {self.best_epoch+1:03d} with Val Micro-F1: {self.best_val:.4f} ==")
 
         self.finish()
 

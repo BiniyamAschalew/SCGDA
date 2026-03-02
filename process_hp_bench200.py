@@ -7,6 +7,9 @@ from pathlib import Path
 import pandas as pd
 
 
+ALLOWED_EPOCHS = {100}
+
+
 def parse_list(value: str) -> list:
     return [item.strip() for item in str(value).split(",") if item.strip()]
 
@@ -36,6 +39,25 @@ def ensure_config_id(df: pd.DataFrame) -> pd.DataFrame:
     if "hp_id" not in out.columns:
         raise KeyError("Neither 'hp_id' nor 'config_id' exists in results.")
     return out
+
+
+def filter_epoch_configs(df: pd.DataFrame, allowed_epochs: set[int]) -> pd.DataFrame:
+    out = df.copy()
+
+    epoch_col = None
+    if "epoch" in out.columns:
+        epoch_col = "epoch"
+    elif "epochs" in out.columns:
+        epoch_col = "epochs"
+
+    if epoch_col is None:
+        raise KeyError("Neither 'epoch' nor 'epochs' exists in results.")
+
+    epoch_values = pd.to_numeric(out[epoch_col], errors="coerce")
+    filtered = out[epoch_values.isin({int(value) for value in allowed_epochs})].copy()
+    if filtered.empty:
+        raise ValueError(f"No rows found with {epoch_col} in {sorted(allowed_epochs)}.")
+    return filtered
 
 
 def build_best_table(df: pd.DataFrame, metric: str, metrics: list) -> pd.DataFrame:
@@ -102,6 +124,7 @@ def main() -> None:
     results_dir = Path(args.results_dir)
     all_df = pd.concat([load_run_results(results_dir, run_id) for run_id in run_ids], ignore_index=True)
     all_df = ensure_config_id(all_df)
+    all_df = filter_epoch_configs(all_df, allowed_epochs=ALLOWED_EPOCHS)
 
     best = build_best_table(all_df, metric=args.metric, metrics=metrics)
     best["scenario"] = best.apply(scenario_label, axis=1)

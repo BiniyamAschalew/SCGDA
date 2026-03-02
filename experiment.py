@@ -41,24 +41,24 @@ role_type = ROLE_TYPES[2]
 
 SEED = 0
 # EPOCHS = 200
-DEVICE = "cuda:0"
+DEVICE = "cuda:1"
 
-USE_TUNED = 0
+USE_TUNED = 2
 BORROW = None
 # BORROW = "simgda"
 # BORROW = "dgsda"
 
 USE_DEFAULT = False
 WANDB = False
-FROM_PYGDA = True
+FROM_PYGDA = False
 
 id = {
-    "model": [6],
-    "dataset": [0],
-    "source": [0],
-    "target": [1],
+    "model": [4],
+    "dataset": [2],
+    "source": [2],
+    "target": [0],
 }
-notes = "dgsda_evaluation"
+notes = "a2gnn_evaluation"
 
 combined_df = pd.DataFrame()
 cur_time = time.strftime("%m%d%H%M%S")

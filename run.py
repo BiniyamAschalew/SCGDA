@@ -22,7 +22,38 @@ warnings.filterwarnings("ignore", category=DeprecationWarning)
 warnings.filterwarnings("ignore", category=UserWarning)
 
 
-def _build_error_result(config: dict, error: Exception, error_type: str, stage: str, elapsed: float):
+def _cuda_device_index(device):
+    try:
+        dev = torch.device(device)
+    except Exception:
+        return None
+    if dev.type != "cuda":
+        return None
+    return dev.index if dev.index is not None else torch.cuda.current_device()
+
+
+def _collect_cuda_memory(device):
+    if not torch.cuda.is_available():
+        return {}
+
+    idx = _cuda_device_index(device)
+    if idx is None:
+        return {}
+
+    try:
+        mb = 1024.0 * 1024.0
+        return {
+            "cuda_device_index": idx,
+            "cuda_allocated_mb": torch.cuda.memory_allocated(idx) / mb,
+            "cuda_reserved_mb": torch.cuda.memory_reserved(idx) / mb,
+            "cuda_max_allocated_mb": torch.cuda.max_memory_allocated(idx) / mb,
+            "cuda_max_reserved_mb": torch.cuda.max_memory_reserved(idx) / mb,
+        }
+    except Exception:
+        return {}
+
+
+def _build_error_result(config: dict, error: Exception, error_type: str, stage: str, elapsed: float, memory: dict | None = None):
     result = {
         "status": "error",
         "error_type": error_type,
@@ -38,6 +69,9 @@ def _build_error_result(config: dict, error: Exception, error_type: str, stage: 
 
     for metric in config["expt"].get("metrics", []):
         result[metric] = float("nan")
+
+    if memory:
+        result.update(memory)
 
     return result
 
@@ -60,6 +94,12 @@ def run(config: dict, from_pygda: bool = False) -> dict:
     set_seed(config["expt"]["seed"])
     device = config["expt"]["device"]
     os.environ.setdefault("PYTORCH_CUDA_ALLOC_CONF", "max_split_size_mb:128")
+    cuda_idx = _cuda_device_index(device)
+    if torch.cuda.is_available() and cuda_idx is not None:
+        try:
+            torch.cuda.reset_peak_memory_stats(cuda_idx)
+        except Exception:
+            pass
 
     source_dataset = target_dataset = None
     source_data = target_data = None
@@ -111,17 +151,18 @@ def run(config: dict, from_pygda: bool = False) -> dict:
         result["seed"] = config["expt"]["seed"]
         result["train_time"] = end_time - start_time
         result["status"] = "ok"
+        result.update(_collect_cuda_memory(device))
 
         return result
     except torch.cuda.OutOfMemoryError as error:
         elapsed = time.time() - start_time
-        result = _build_error_result(config, error, "cuda_oom", stage, elapsed)
+        result = _build_error_result(config, error, "cuda_oom", stage, elapsed, _collect_cuda_memory(device))
         result["status"] = "oom"
         return result
     except RuntimeError as error:
         if "out of memory" in str(error).lower():
             elapsed = time.time() - start_time
-            result = _build_error_result(config, error, "cuda_oom", stage, elapsed)
+            result = _build_error_result(config, error, "cuda_oom", stage, elapsed, _collect_cuda_memory(device))
             result["status"] = "oom"
             return result
         raise
