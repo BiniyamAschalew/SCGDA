@@ -138,16 +138,21 @@ class BaseGDA(ABC):
 
         return "continue" # do not stop
 
-    def log(self, epoch, epoch_loss, train_results):
+    def log(self, epoch, epoch_loss, train_results, test_results=None):
 
         if self.verbose >= 1:
             print(f"Epoch {epoch+1:03d}, Loss: {epoch_loss:.4f}")
         if self.verbose >= 2:
-            print(f"train results: {train_results}")    
+            print(f"train results: {train_results}")
+            if test_results is not None:
+                print(f"test results: {test_results}")    
 
-        self.wandb.log({
+        payload = {
             "epoch": epoch + 1,
             "Loss": epoch_loss,
             "train metrics": train_results,
-        })
+        }
+        if test_results is not None:
+            payload["test metrics"] = test_results
 
+        self.wandb.log(payload)

@@ -52,6 +52,7 @@ MODELS = {
     21: "kbl",
     22: "pairalign",
     23: "simgda_filter",
+    24: "filtada",
 }
 
 DATASETS = {0: "citation", 1: "blog", 2: "airport", 3: "twitch", 4: "mag"}
@@ -65,14 +66,14 @@ SEED = 0
 DEVICE = "cuda:4"
 
 USE_TUNED = 2
-BORROW = "a2gnn"
+BORROW = "adagcn"
 USE_DEFAULT = False
 WANDB = False
 FROM_PYGDA = False
 
 id = {
-    "model": [23],
-    "dataset": [0, 1],
+    "model": [24],
+    "dataset": [1],
     "source": [1],
     "target": [0],
 }
@@ -228,8 +229,17 @@ def _save_filter_artifacts(model, config: dict, scenario_dir: Path):
     else:
         target_raw = model.target_filter_param.detach().cpu().flatten()
 
-    source_poly = _to_polynomial(source_raw, filter_type)
-    target_poly = _to_polynomial(target_raw, filter_type)
+    # For models with parameterization (e.g., softmax logits), use effective
+    # filter weights for polynomial reporting/printing.
+    if hasattr(model, "_effective_filter"):
+        source_eff = model._effective_filter(model.source_filter_param).detach().cpu().flatten()
+        target_eff = model._effective_filter(model.target_filter_param).detach().cpu().flatten()
+    else:
+        source_eff = source_raw
+        target_eff = target_raw
+
+    source_poly = _to_polynomial(source_eff, filter_type)
+    target_poly = _to_polynomial(target_eff, filter_type)
 
     final_df = pd.DataFrame(
         [
@@ -237,12 +247,14 @@ def _save_filter_artifacts(model, config: dict, scenario_dir: Path):
                 "domain": "source",
                 "filter_type": filter_type,
                 "raw_coeffs": _list_to_str(source_raw),
+                "effective_coeffs": _list_to_str(source_eff),
                 "poly_coeffs": _list_to_str(source_poly),
             },
             {
                 "domain": "target",
                 "filter_type": filter_type,
                 "raw_coeffs": _list_to_str(target_raw),
+                "effective_coeffs": _list_to_str(target_eff),
                 "poly_coeffs": _list_to_str(target_poly),
             },
         ]
@@ -311,10 +323,56 @@ def _save_filter_artifacts(model, config: dict, scenario_dir: Path):
     else:
         extra = {}
 
+    perf_history = getattr(model, "epoch_history", None)
+    if perf_history:
+        perf_rows = []
+        for item in perf_history:
+            epoch = int(item["epoch"])
+            for metric_name, metric_val in item.get("train_metrics", {}).items():
+                perf_rows.append(
+                    {
+                        "epoch": epoch,
+                        "split": "source_train",
+                        "metric": metric_name,
+                        "value": float(metric_val),
+                    }
+                )
+            for metric_name, metric_val in item.get("target_metrics", {}).items():
+                perf_rows.append(
+                    {
+                        "epoch": epoch,
+                        "split": "target_eval",
+                        "metric": metric_name,
+                        "value": float(metric_val),
+                    }
+                )
+
+        perf_df = pd.DataFrame(perf_rows)
+        if not perf_df.empty:
+            perf_path = scenario_dir / "epoch_performance.csv"
+            perf_df.to_csv(perf_path, index=False)
+
+            target_df = perf_df[perf_df["split"] == "target_eval"]
+            if not target_df.empty:
+                fig, ax = plt.subplots(figsize=(8, 5))
+                for metric in sorted(target_df["metric"].unique()):
+                    metric_df = target_df[target_df["metric"] == metric]
+                    ax.plot(metric_df["epoch"], metric_df["value"], linewidth=1.8, label=metric)
+                ax.set_title("Target Performance Per Epoch")
+                ax.set_xlabel("Epoch")
+                ax.set_ylabel("Score")
+                ax.grid(True, alpha=0.25)
+                ax.legend(loc="best", fontsize=8)
+                fig.tight_layout()
+                fig.savefig(scenario_dir / "target_performance_per_epoch.png", dpi=200)
+                plt.close(fig)
+
     out = {
         "filter_type": filter_type,
         "source_raw_coeffs": _list_to_str(source_raw),
         "target_raw_coeffs": _list_to_str(target_raw),
+        "source_effective_coeffs": _list_to_str(source_eff),
+        "target_effective_coeffs": _list_to_str(target_eff),
         "source_poly_coeffs": _list_to_str(source_poly),
         "target_poly_coeffs": _list_to_str(target_poly),
     }

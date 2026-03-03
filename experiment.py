@@ -23,6 +23,7 @@ MODELS = {
     20:"bdlite",
     21:"kbl", 22:"pairalign",
     23:"simgda_filter",
+    24:"filtada",
     }
 
 
