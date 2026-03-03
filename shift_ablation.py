@@ -20,6 +20,7 @@ from torch_geometric.utils import add_self_loops, degree
 from data.build_dataset import build_dataset
 from utils.config_utils import build_config
 from utils.expt_utils import set_seed
+from utils.filter_utils import conditional_mmd, make_gaussian_probe, mmd_rbf
 
 
 class Propagation(MessagePassing):
@@ -85,83 +86,6 @@ def load_pair(dataset: str, source: str, target: str, device: str, seed: int):
     return source_data, target_data
 
 
-def pairwise_sq_dist(x: torch.Tensor, y: torch.Tensor) -> torch.Tensor:
-    x_norm = (x * x).sum(dim=1, keepdim=True)
-    y_norm = (y * y).sum(dim=1, keepdim=True).transpose(0, 1)
-    return torch.clamp(x_norm + y_norm - 2.0 * (x @ y.transpose(0, 1)), min=0.0)
-
-
-def median_bandwidth(x: torch.Tensor, y: torch.Tensor, eps: float = 1e-6) -> torch.Tensor:
-    all_feat = torch.cat([x, y], dim=0)
-    dists = pairwise_sq_dist(all_feat, all_feat).detach()
-    n = dists.size(0)
-    mask = ~torch.eye(n, dtype=torch.bool, device=dists.device)
-    vals = dists[mask]
-    if vals.numel() == 0:
-        return torch.tensor(1.0, device=x.device, dtype=x.dtype)
-    return vals.median().clamp_min(eps)
-
-
-def mmd_rbf(
-    source: torch.Tensor,
-    target: torch.Tensor,
-    kernel_mul: float,
-    kernel_num: int,
-    fix_sigma: float | None,
-    eps: float = 1e-6,
-) -> torch.Tensor:
-    bandwidth = (
-        torch.as_tensor(fix_sigma, device=source.device, dtype=source.dtype)
-        if fix_sigma is not None
-        else median_bandwidth(source, target, eps=eps)
-    )
-    bandwidth = bandwidth / (kernel_mul ** (kernel_num // 2))
-
-    xx = pairwise_sq_dist(source, source)
-    yy = pairwise_sq_dist(target, target)
-    xy = pairwise_sq_dist(source, target)
-
-    k_xx = 0.0
-    k_yy = 0.0
-    k_xy = 0.0
-    for i in range(kernel_num):
-        bw = (bandwidth * (kernel_mul**i)).clamp_min(eps)
-        k_xx = k_xx + torch.exp(-xx / bw)
-        k_yy = k_yy + torch.exp(-yy / bw)
-        k_xy = k_xy + torch.exp(-xy / bw)
-    return k_xx.mean() + k_yy.mean() - 2.0 * k_xy.mean()
-
-
-def conditional_mmd(
-    source_feat: torch.Tensor,
-    target_feat: torch.Tensor,
-    source_y: torch.Tensor,
-    target_y: torch.Tensor,
-    kernel_mul: float,
-    kernel_num: int,
-    fix_sigma: float | None,
-) -> torch.Tensor:
-    classes = torch.unique(torch.cat([source_y, target_y], dim=0))
-    vals = []
-    for cls in classes:
-        src_mask = source_y == cls
-        tgt_mask = target_y == cls
-        if int(src_mask.sum().item()) == 0 or int(tgt_mask.sum().item()) == 0:
-            continue
-        vals.append(
-            mmd_rbf(
-                source_feat[src_mask],
-                target_feat[tgt_mask],
-                kernel_mul=kernel_mul,
-                kernel_num=kernel_num,
-                fix_sigma=fix_sigma,
-            )
-        )
-    if not vals:
-        return torch.tensor(0.0, device=source_feat.device, dtype=source_feat.dtype)
-    return torch.stack(vals).mean()
-
-
 def propagate_layers(x: torch.Tensor, edge_index: torch.Tensor, max_layers: int, prop: Propagation):
     layers = [x]
     cur = x
@@ -187,11 +111,7 @@ def compute_table(source_data, target_data, cfg: dict):
     source_y = source_data.y.detach()
     target_y = target_data.y.detach()
 
-    all_real = torch.cat([source_x, target_x], dim=0)
-    probe_mean = all_real.mean(dim=0, keepdim=True)
-    probe_std = all_real.std(dim=0, keepdim=True).clamp_min(1e-6)
-    source_probe0 = torch.randn_like(source_x) * probe_std + probe_mean
-    target_probe0 = torch.randn_like(target_x) * probe_std + probe_mean
+    source_probe0, target_probe0 = make_gaussian_probe(source_x, target_x)
 
     prop = Propagation().to(source_x.device)
     src_real_layers = propagate_layers(source_x, source_data.edge_index, cfg["max_layers"], prop)

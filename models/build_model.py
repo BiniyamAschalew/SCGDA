@@ -20,6 +20,8 @@ from models.ours.dlit.dlit import DLIT
 from models.ours.bdlite.bdlite import BDlite
 from models.ours.scgda.scgda import SCGDA
 from models.ours.test.test import Test
+from models.ours.fda.fda import FDA
+from models.ours.simgda_filter.simgda_filter import SimGDAFilter
 
 # Imported models from pygda
 from models.imported.a2gnn.a2gnn import A2GNN as A2GNN_imported
@@ -65,6 +67,8 @@ def build_model(config: dict, from_pygda: bool = False):
         "dlit": DLIT,
         "bdlite": BDlite,
         "scgda": SCGDA,
+        "fda": FDA,
+        "simgda_filter": SimGDAFilter,
         # "simgda_role": SimGDARole,
         # "simgda_cheb": SimGDACheb,
         "test": Test,

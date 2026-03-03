@@ -54,3 +54,98 @@ def tensor_to_float_list(values: torch.Tensor, precision: int = 6):
     """Utility for stable human-readable logging of 1D tensors."""
     values = torch.as_tensor(values).detach().cpu().flatten().tolist()
     return [round(float(v), precision) for v in values]
+
+
+def pairwise_sq_dist(x: torch.Tensor, y: torch.Tensor) -> torch.Tensor:
+    """Pairwise squared Euclidean distances between row-vectors in x and y."""
+    x_norm = (x * x).sum(dim=1, keepdim=True)
+    y_norm = (y * y).sum(dim=1, keepdim=True).transpose(0, 1)
+    return torch.clamp(x_norm + y_norm - 2.0 * (x @ y.transpose(0, 1)), min=0.0)
+
+
+def median_bandwidth(x: torch.Tensor, y: torch.Tensor, eps: float = 1e-6) -> torch.Tensor:
+    """Median heuristic bandwidth for RBF kernels."""
+    all_feat = torch.cat([x, y], dim=0)
+    dists = pairwise_sq_dist(all_feat, all_feat).detach()
+    n = dists.size(0)
+    mask = ~torch.eye(n, dtype=torch.bool, device=dists.device)
+    vals = dists[mask]
+    if vals.numel() == 0:
+        return torch.tensor(1.0, device=x.device, dtype=x.dtype)
+    return vals.median().clamp_min(eps)
+
+
+def mmd_rbf(
+    source: torch.Tensor,
+    target: torch.Tensor,
+    kernel_mul: float = 2.0,
+    kernel_num: int = 5,
+    fix_sigma: float | None = None,
+    eps: float = 1e-6,
+) -> torch.Tensor:
+    """Multi-kernel RBF MMD."""
+    bandwidth = (
+        torch.as_tensor(fix_sigma, device=source.device, dtype=source.dtype)
+        if fix_sigma is not None
+        else median_bandwidth(source, target, eps=eps)
+    )
+    bandwidth = bandwidth / (kernel_mul ** (kernel_num // 2))
+
+    xx = pairwise_sq_dist(source, source)
+    yy = pairwise_sq_dist(target, target)
+    xy = pairwise_sq_dist(source, target)
+
+    k_xx = 0.0
+    k_yy = 0.0
+    k_xy = 0.0
+    for i in range(kernel_num):
+        bw = (bandwidth * (kernel_mul**i)).clamp_min(eps)
+        k_xx = k_xx + torch.exp(-xx / bw)
+        k_yy = k_yy + torch.exp(-yy / bw)
+        k_xy = k_xy + torch.exp(-xy / bw)
+    return k_xx.mean() + k_yy.mean() - 2.0 * k_xy.mean()
+
+
+def conditional_mmd(
+    source_feat: torch.Tensor,
+    target_feat: torch.Tensor,
+    source_y: torch.Tensor,
+    target_y: torch.Tensor,
+    kernel_mul: float = 2.0,
+    kernel_num: int = 5,
+    fix_sigma: float | None = None,
+) -> torch.Tensor:
+    """Class-conditional MMD averaged over classes present in both domains."""
+    classes = torch.unique(torch.cat([source_y, target_y], dim=0))
+    vals = []
+    for cls in classes:
+        src_mask = source_y == cls
+        tgt_mask = target_y == cls
+        if int(src_mask.sum().item()) == 0 or int(tgt_mask.sum().item()) == 0:
+            continue
+        vals.append(
+            mmd_rbf(
+                source_feat[src_mask],
+                target_feat[tgt_mask],
+                kernel_mul=kernel_mul,
+                kernel_num=kernel_num,
+                fix_sigma=fix_sigma,
+            )
+        )
+    if not vals:
+        return torch.tensor(0.0, device=source_feat.device, dtype=source_feat.dtype)
+    return torch.stack(vals).mean()
+
+
+def make_gaussian_probe( # combine the source and target feature, compute mean and std, and create a probe
+    source_x: torch.Tensor,
+    target_x: torch.Tensor,
+    eps: float = 1e-6,
+) -> tuple[torch.Tensor, torch.Tensor]:
+    """Sample source/target probe features from combined mean/std."""
+    all_real = torch.cat([source_x, target_x], dim=0)
+    probe_mean = all_real.mean(dim=0, keepdim=True)
+    probe_std = all_real.std(dim=0, keepdim=True).clamp_min(eps)
+    source_probe = torch.randn_like(source_x) * probe_std + probe_mean
+    target_probe = torch.randn_like(target_x) * probe_std + probe_mean
+    return source_probe, target_probe

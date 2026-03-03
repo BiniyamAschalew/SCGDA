@@ -1,0 +1,73 @@
+"""Default configs for aligner shift ablation experiments."""
+
+DEFAULT_TEST_CONFIG = {
+    "citation": [
+        ("ACMv9", "Citationv1"),
+        ("Citationv1", "DBLPv7"),
+        ("DBLPv7", "ACMv9"),
+        ("ACMv9", "DBLPv7"),
+        ("Citationv1", "ACMv9"),
+        ("DBLPv7", "Citationv1"),
+    ],
+    "blog": [("Blog1", "Blog2"), ("Blog2", "Blog1")],
+    "airport": [
+        ("BRAZIL", "USA"),
+        ("USA", "EUROPE"),
+        ("EUROPE", "BRAZIL"),
+        ("BRAZIL", "EUROPE"),
+        ("USA", "BRAZIL"),
+        ("EUROPE", "USA"),
+    ],
+    "twitch": [("DE", "EN"), ("EN", "DE")],
+}
+
+
+DEFAULT_EXPT_CONFIG = {
+    "seed": 0,
+    "device": "cuda:6",
+    "max_layers": 5,
+    "metric_sample_size": 2000,
+    "kernel_mul": 2.0,
+    "kernel_num": 5,
+    "fix_sigma": None,
+    "out_dir": "__saved__/analysis/aligner_shifts",
+    # FDA-alignment objective config
+    "fda_filter": "cheb",
+    "fda_feature_mmd_weight": 0.1,
+    "fda_probe_mmd_weight": 1.0,
+    "fda_mmd_sampling_num": 1000,
+    "fda_mmd_times": 5,
+    "fda_nonnegative_params": True,
+    "cheb_k": 3,
+    "cheb_lambda_max": 2.0,
+    "align_epochs": 100,
+    "align_lr": 0.01,
+    "align_weight_decay": 0.0,
+    "align_log_interval": 10,
+    "align_feature_dim": 128,
+    "align_sample_size": 1024,
+    "edge_reg": 1e-4,
+    "temp_reg": 1e-4,
+    "struct_loss_mode": "adjacency",  # "adjacency" or "ppmi"
+    "struct_bpr_weight": 1e-4,
+    "struct_bpr_samples": 2048,
+    "struct_bpr_margin": 0.0,
+    "ppmi_path_len": 5,
+    "ppmi_pos_threshold": 0.0,
+    "smooth_reg": 0.0,  # legacy fallback key; prefer struct_bpr_weight
+    "edge_eps": 1e-6,
+    "operator_chunk_size": 128,
+    "operator_edge_threshold": 1e-5,
+    "operator_topk": 16,
+    "struct_bins": 40,
+    "struct_pagerank_iters": 40,
+    "struct_eig_iters": 40,
+    "struct_pagerank_alpha": 0.85,
+    "mlp_layers": 2,
+    "mlp_hid_dim": 128,
+    "mlp_dropout": 0.2,
+    "mlp_epochs": 100,
+    "mlp_lr": 0.01,
+    "mlp_weight_decay": 1e-3,
+    "mlp_repeats": 5,
+}

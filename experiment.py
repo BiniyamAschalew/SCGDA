@@ -22,6 +22,7 @@ MODELS = {
     18:"scgda", 19:"test",
     20:"bdlite",
     21:"kbl", 22:"pairalign",
+    23:"simgda_filter",
     }
 
 
@@ -41,21 +42,21 @@ role_type = ROLE_TYPES[2]
 
 SEED = 0
 # EPOCHS = 200
-DEVICE = "cuda:1"
+DEVICE = "cuda:4"
 
 USE_TUNED = 2
 BORROW = None
-# BORROW = "simgda"
+# BORROW = "a2gnn"
 # BORROW = "dgsda"
 
 USE_DEFAULT = False
 WANDB = False
-FROM_PYGDA = False
+FROM_PYGDA = True
 
 id = {
-    "model": [4],
-    "dataset": [2],
-    "source": [2],
+    "model": [15],
+    "dataset": [0,1],
+    "source": [1],
     "target": [0],
 }
 notes = "a2gnn_evaluation"

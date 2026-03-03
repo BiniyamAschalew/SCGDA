@@ -3,6 +3,7 @@ from torch.nn import Linear, Sequential
 
 from torch_geometric.nn import GCNConv, SAGEConv, GATConv, GINConv
 from models.__layers.prop_gcn_conv import PropGCNConv
+from models.__layers.filter_gcn_conv import FilterGCNConv
 
 def build_layer(in_dim, out_dim, layer_type):
     layer_type = layer_type.lower()
@@ -21,6 +22,13 @@ def build_layer(in_dim, out_dim, layer_type):
 
     elif layer_type == 'prop':
         return PropGCNConv(in_dim, out_dim)
+
+    elif layer_type == 'filter':
+        return FilterGCNConv(in_dim, out_dim, filter_type='mono')
+
+    elif layer_type.startswith('filter_'):
+        filter_type = layer_type.split('_', 1)[1]
+        return FilterGCNConv(in_dim, out_dim, filter_type=filter_type)
         
     # elif layer_type == 'cgnn':
     #     return CGNNConv(in_dim, out_dim)
