@@ -1,5 +1,5 @@
 """
-Simple layer-wise shift experiment (no argparse).
+Layer-wise shift experiment for blog/airport (no argparse).
 
 For each dataset/source->target scenario:
 1) Load source and target graphs.
@@ -24,6 +24,16 @@ from data.build_dataset import build_dataset
 from utils.config_utils import build_config
 from utils.expt_utils import set_seed
 from utils.filter_utils import conditional_mmd, make_gaussian_probe, mmd_rbf
+
+plt.rcParams.update(
+    {
+        "font.size": 14,
+        "axes.labelsize": 15,
+        "xtick.labelsize": 13,
+        "ytick.labelsize": 13,
+        "legend.fontsize": 13,
+    }
+)
 
 
 class Propagation(MessagePassing):
@@ -306,40 +316,63 @@ def save_table(path: Path, rows: list[dict]) -> None:
         writer.writerows(rows)
 
 
-def save_plot(path: Path, rows: list[dict], title: str) -> None:
+def _plot_combined_on_axes(ax_mmd, rows: list[dict]) -> None:
     x = [int(r["layer"]) for r in rows]
-    fig, axes = plt.subplots(3, 1, figsize=(9, 11), sharex=True)
+    ax_perf = ax_mmd.twinx()
 
-    axes[0].plot(x, [r["real_mmd"] for r in rows], marker="o", label="Real MMD")
-    axes[0].plot(x, [r["probe_mmd"] for r in rows], marker="o", label="Probe MMD")
-    axes[0].set_ylabel("MMD")
-    axes[0].grid(alpha=0.3)
-    axes[0].legend()
-
-    axes[1].plot(x, [r["real_cmmd"] for r in rows], marker="o", label="Real cMMD")
-    axes[1].plot(x, [r["probe_cmmd"] for r in rows], marker="o", label="Probe cMMD")
-    axes[1].set_ylabel("Conditional MMD")
-    axes[1].grid(alpha=0.3)
-    axes[1].legend()
-
+    real_mmd = [float(r["real_mmd"]) for r in rows]
+    real_cmmd = [float(r["real_cmmd"]) for r in rows]
     tgt_acc = [float(r.get("mlp_target_acc_mean", float("nan"))) for r in rows]
     tgt_acc_std = [float(r.get("mlp_target_acc_std", 0.0)) for r in rows]
-    tgt_acc_drop = [float(r.get("mlp_target_acc_drop_vs_l0", float("nan"))) for r in rows]
-    axes[2].plot(x, tgt_acc, marker="o", label="MLP target acc")
-    axes[2].fill_between(
+
+    ax_mmd.plot(x, real_mmd, marker="o", linewidth=2.0, label="Real MMD", color="tab:blue")
+    ax_mmd.plot(x, real_cmmd, marker="o", linewidth=2.0, label="Real cMMD", color="tab:orange")
+    ax_mmd.set_ylabel("MMD / cMMD")
+    ax_mmd.grid(alpha=0.3)
+
+    ax_perf.plot(x, tgt_acc, marker="o", linewidth=2.0, label="MLP target acc", color="tab:green")
+    ax_perf.fill_between(
         x,
         [m - s for m, s in zip(tgt_acc, tgt_acc_std)],
         [m + s for m, s in zip(tgt_acc, tgt_acc_std)],
-        alpha=0.2,
+        alpha=0.18,
+        color="tab:green",
+        linewidth=0.0,
     )
-    axes[2].plot(x, tgt_acc_drop, marker="o", linestyle="--", label="MLP target acc drop vs L0")
-    axes[2].set_ylabel("Transfer metric")
-    axes[2].set_xlabel("Layer (0 = initial)")
-    axes[2].grid(alpha=0.3)
-    axes[2].legend()
+    ax_perf.set_ylabel("Transfer metric")
 
-    fig.suptitle(title)
-    fig.tight_layout(rect=[0, 0, 1, 0.96])
+    ax_mmd.set_xlabel("Layer (0 = initial)")
+
+    h_mmd, l_mmd = ax_mmd.get_legend_handles_labels()
+    h_perf, l_perf = ax_perf.get_legend_handles_labels()
+    ax_mmd.legend(h_mmd + h_perf, l_mmd + l_perf, loc="best")
+
+
+def save_plot(path: Path, rows: list[dict], title: str) -> None:
+    _ = title
+    fig, ax = plt.subplots(1, 1, figsize=(10, 5.6))
+    _plot_combined_on_axes(ax, rows)
+
+    fig.tight_layout()
+    fig.savefig(path, dpi=200)
+    plt.close(fig)
+
+
+def save_blog_airport_side_by_side_plot(path: Path, dataset_avg_rows: dict[str, list[dict]]) -> None:
+    fig, axes = plt.subplots(1, 2, figsize=(15, 5.6), sharex=True)
+    order = ["airport", "blog"]
+    labels = {"airport": "Airport Average", "blog": "Blog Average"}
+
+    for i, dataset in enumerate(order):
+        ax = axes[i]
+        rows = dataset_avg_rows.get(dataset, [])
+        if not rows:
+            ax.text(0.5, 0.5, f"No rows for {dataset}", ha="center", va="center", transform=ax.transAxes)
+            ax.set_xlabel("Layer (0 = initial)")
+            continue
+        _plot_combined_on_axes(ax, rows)
+
+    fig.tight_layout()
     fig.savefig(path, dpi=200)
     plt.close(fig)
 
@@ -446,16 +479,11 @@ def experiment(dataset: str, source: str, target: str, cfg: dict) -> tuple[dict,
 
 if __name__ == "__main__":
     test_config = {
-        "citation": [
-            ("ACMv9", "Citationv1"), ("Citationv1", "DBLPv7"), ("DBLPv7", "ACMv9"),
-            ("ACMv9", "DBLPv7"), ("Citationv1", "ACMv9"), ("DBLPv7", "Citationv1"),
-            ],
         "blog": [("Blog1", "Blog2"), ("Blog2", "Blog1")],
         "airport": [
             ("BRAZIL", "USA"), ("USA", "EUROPE"), ("EUROPE", "BRAZIL"),
             ("BRAZIL", "EUROPE"), ("USA", "BRAZIL"), ("EUROPE", "USA"),
             ],
-        "twitch": [("DE", "EN"), ("EN", "DE")],
     }
 
     expt_config = {
@@ -473,7 +501,7 @@ if __name__ == "__main__":
         "mlp_lr": 1e-2,
         "mlp_weight_decay": 5e-4,
         "mlp_epochs": 100,
-        "out_dir": "__saved__/analysis/cusom_shifts",
+        "out_dir": "__saved__/analysis/custom_shifts_blog_airport",
     }
 
     summary_rows = []
@@ -534,12 +562,14 @@ if __name__ == "__main__":
     else:
         print("[warning] No successful scenarios, skipping average plot.")
 
+    dataset_average_rows = {}
     for dataset, dataset_rows in dataset_to_rows.items():
         dataset_avg_rows = build_average_rows(dataset_rows, expt_config["max_layers"])
         if not dataset_avg_rows:
             print(f"[warning] No successful scenarios for dataset={dataset}, skipping dataset average plot.")
             continue
 
+        dataset_average_rows[dataset] = dataset_avg_rows
         dataset_dir = Path(expt_config["out_dir"]) / dataset
         dataset_dir.mkdir(parents=True, exist_ok=True)
         dataset_avg_csv_path = dataset_dir / "average_layer_metrics.csv"
@@ -553,6 +583,10 @@ if __name__ == "__main__":
         )
         print(f"[saved] {dataset_avg_csv_path}")
         print(f"[saved] {dataset_avg_png_path}")
+
+    side_by_side_png_path = Path(expt_config["out_dir"]) / "airport_blog_average_side_by_side.png"
+    save_blog_airport_side_by_side_plot(side_by_side_png_path, dataset_average_rows)
+    print(f"[saved] {side_by_side_png_path}")
 
     if failed_rows:
         failed_path = Path(expt_config["out_dir"]) / "failed_scenarios.csv"

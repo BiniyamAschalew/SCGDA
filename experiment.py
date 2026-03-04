@@ -46,16 +46,16 @@ SEED = 0
 DEVICE = "cuda:4"
 
 USE_TUNED = 2
-BORROW = None
+# BORROW = None
 # BORROW = "a2gnn"
-# BORROW = "dgsda"
+BORROW = "dgsda"
 
 USE_DEFAULT = False
 WANDB = False
 FROM_PYGDA = True
 
 id = {
-    "model": [15],
+    "model": [16],
     "dataset": [0,1],
     "source": [1],
     "target": [0],

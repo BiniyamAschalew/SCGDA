@@ -30,6 +30,7 @@ from tqdm import tqdm
 
 from models.__filters.mono import MonoProp
 from models.__layers.filter_gcn_conv import FilterGCNConv
+from utils.ablation_utils.alignment import build_struct_positive_edges, edge_bpr_structure_loss
 from utils.ablation_utils.common import load_pair, save_table
 from utils.expt_utils import set_seed
 from utils.filter_utils import make_gaussian_probe, mmd_rbf, tensor_to_float_list
@@ -45,23 +46,39 @@ CFG = {
     "seed": 7,
     # Shared monomial hop basis size (hop-space: A, A^2, ..., A^K)
     "k_hops": 3,
+    # Filter coefficient parameterization:
+    # - "softmax": unconstrained simplex
+    # - "monotone_cumsum": c1<=c2<=... by construction (recommended with monotonicity)
+    "hop_parametrization": "monotone_cumsum",
     # Case-i fixed shared hop weights
     "fixed_hop_coeffs": [0.0, 0.0, 1.0],
     # Filter pre-alignment (case-ii only)
-    "align_epochs": 50,
+    "align_epochs": 20,
     "align_lr_mult": 1.25,  # alignment lr = lr * align_lr_mult (slightly higher)
+    "align_optimizer": "sgd",  # sgd is less prone to near-identical Adam logit trajectories
+    "align_momentum": 0.0,
     "freeze_after_align": True,  # freeze aligned operator during semantic training
     "align_sample_size": 4096,
     "kernel_mul": 2.0,
     "kernel_num": 5,
     "fix_sigma": None,
+    # Structural filter learning (BPR on graph positives; supports adjacency/ppmi)
+    "struct_loss_mode": "ppmi",  # "adjacency" or "ppmi"
+    "struct_bpr_weight": 0.1,
+    "struct_bpr_samples": 2048,
+    "struct_bpr_margin": 0.0,
+    "ppmi_path_len": 5,
+    "ppmi_pos_threshold": 0.0,
+    # Encourage incremental hop coefficients: c1 <= c2 <= ... <= cK
+    "monotonicity_weight": 1.0,
+    "monotonicity_projection": False,  # only used in softmax mode
     # Supervised training
     "epochs": 200,
     "lr": 1e-2,
     "weight_decay": 5e-4,
     "dropout": 0.2,
     "hid_dim": 64,
-    # Optional tiny regularizer on trainable hop coefficients (after softmax).
+    # L1 on trainable filter logits (raw_hops).
     "filter_l1_weight": 0.0,
     # Outputs
     "out_root": "__saved__/analysis/filter_operator_matching_motivation",
@@ -84,8 +101,13 @@ class SharedFilterGCN(nn.Module):
             in_channels=in_dim,
             out_channels=hid_dim,
             filter_type="mono",
-            prepend_zero_to_filter=True,  # [a,b,c] => a*A + b*A^2 + c*A^3
+            prepend_zero_to_filter=True,  # hop coeffs: [c1,c2,...] => c1*A + c2*A^2 + ...
         )
+        if not bool(getattr(self.conv, "prepend_zero_to_filter", False)):
+            raise RuntimeError(
+                "SharedFilterGCN requires hop semantics (coeff[0] -> A X). "
+                "Expected prepend_zero_to_filter=True."
+            )
         self.cls = nn.Linear(hid_dim, num_classes)
         self.dropout = float(dropout)
 
@@ -146,11 +168,48 @@ def _subsample_rows(x: torch.Tensor, n: int) -> torch.Tensor:
 
 def _hop_to_poly(hop_coeffs: torch.Tensor) -> torch.Tensor:
     """Convert hop-space [A, A^2, ...] coeffs to monomial [I, A, A^2, ...]."""
-    return torch.cat([hop_coeffs.new_zeros(1), hop_coeffs], dim=0)
+    poly = torch.cat([hop_coeffs.new_zeros(1), hop_coeffs], dim=0)
+    # Enforce no identity term; hop coeff index 0 is always A X.
+    poly[0] = 0.0
+    return poly
 
 
-def _effective_hops(raw: torch.Tensor) -> torch.Tensor:
-    return F.softmax(raw, dim=0)
+def _effective_hops(raw: torch.Tensor, cfg: dict | None = None) -> torch.Tensor:
+    mode = str((cfg or {}).get("hop_parametrization", "softmax")).lower()
+    if mode == "softmax":
+        return F.softmax(raw, dim=0)
+    if mode == "monotone_cumsum":
+        inc = F.softplus(raw) + 1e-8
+        hop = torch.cumsum(inc, dim=0)
+        return hop / hop.sum().clamp_min(1e-8)
+    raise ValueError(f"Unsupported hop_parametrization: {mode}")
+
+
+def _monotonicity_loss_increasing(hop_coeffs: torch.Tensor) -> torch.Tensor:
+    """Penalty for violating c1 <= c2 <= ... <= cK."""
+    if hop_coeffs.numel() <= 1:
+        return hop_coeffs.new_tensor(0.0)
+    return F.relu(hop_coeffs[:-1] - hop_coeffs[1:]).mean()
+
+
+def _filter_l1_penalty(raw_hops: nn.Parameter) -> torch.Tensor:
+    return raw_hops.abs().mean()
+
+
+def _project_hops_non_decreasing(hop_coeffs: torch.Tensor, eps: float = 1e-8) -> torch.Tensor:
+    proj = torch.cummax(hop_coeffs, dim=0).values
+    proj = proj.clamp_min(eps)
+    proj = proj / proj.sum().clamp_min(eps)
+    return proj
+
+
+def _apply_monotonic_projection(raw_hops: nn.Parameter, cfg: dict) -> None:
+    if str(cfg.get("hop_parametrization", "softmax")).lower() != "softmax":
+        return
+    with torch.no_grad():
+        hop = _effective_hops(raw_hops, cfg)
+        hop_proj = _project_hops_non_decreasing(hop)
+        raw_hops.copy_(torch.log(hop_proj))
 
 
 def _get_align_lr(cfg: dict) -> float:
@@ -166,38 +225,85 @@ def prealign_filter(
     cfg: dict,
 ) -> list[dict]:
     mono = MonoProp()
-    opt = torch.optim.Adam([raw_hops], lr=_get_align_lr(cfg))
+    align_lr = _get_align_lr(cfg)
+    opt_name = str(cfg.get("align_optimizer", "sgd")).lower()
+    if opt_name == "adam":
+        opt = torch.optim.Adam([raw_hops], lr=align_lr)
+    elif opt_name == "sgd":
+        opt = torch.optim.SGD([raw_hops], lr=align_lr, momentum=float(cfg.get("align_momentum", 0.0)))
+    else:
+        raise ValueError(f"Unsupported align_optimizer: {opt_name}")
     history = []
+    struct_weight = float(cfg.get("struct_bpr_weight", 0.0))
+    struct_samples = int(cfg.get("struct_bpr_samples", 2048))
+    struct_margin = float(cfg.get("struct_bpr_margin", 0.0))
+    source_pos_edges = build_struct_positive_edges(source_data, cfg) if struct_weight > 0 else None
+    target_pos_edges = build_struct_positive_edges(target_data, cfg) if struct_weight > 0 else None
 
     for epoch in tqdm(range(1, int(cfg["align_epochs"]) + 1), desc="Pre-align", leave=False):
-        hop = _effective_hops(raw_hops)
+        hop = _effective_hops(raw_hops, cfg)
         poly = _hop_to_poly(hop)
 
         source_probe, target_probe = make_gaussian_probe(source_data.x, target_data.x)
-        source_push = mono(source_probe, source_data.edge_index, poly)
-        target_push = mono(target_probe, target_data.edge_index, poly)
-        source_push = _subsample_rows(source_push, int(cfg["align_sample_size"]))
-        target_push = _subsample_rows(target_push, int(cfg["align_sample_size"]))
+        source_push_full = mono(source_probe, source_data.edge_index, poly)
+        target_push_full = mono(target_probe, target_data.edge_index, poly)
+
+        source_push = _subsample_rows(source_push_full, int(cfg["align_sample_size"]))
+        target_push = _subsample_rows(target_push_full, int(cfg["align_sample_size"]))
         n = min(int(source_push.size(0)), int(target_push.size(0)))
         source_push = source_push[:n]
         target_push = target_push[:n]
 
-        loss = mmd_rbf(
+        align_mmd = mmd_rbf(
             source_push,
             target_push,
             kernel_mul=float(cfg["kernel_mul"]),
             kernel_num=int(cfg["kernel_num"]),
             fix_sigma=cfg["fix_sigma"],
         )
+        monotonicity_loss = _monotonicity_loss_increasing(hop)
+        l1_reg = _filter_l1_penalty(raw_hops)
+        if struct_weight > 0 and source_pos_edges is not None and target_pos_edges is not None:
+            source_struct_bpr = edge_bpr_structure_loss(
+                source_push_full,
+                source_pos_edges,
+                num_samples=struct_samples,
+                margin=struct_margin,
+            )
+            target_struct_bpr = edge_bpr_structure_loss(
+                target_push_full,
+                target_pos_edges,
+                num_samples=struct_samples,
+                margin=struct_margin,
+            )
+            struct_loss = struct_weight * (source_struct_bpr + target_struct_bpr)
+        else:
+            source_struct_bpr = align_mmd.new_tensor(0.0)
+            target_struct_bpr = align_mmd.new_tensor(0.0)
+            struct_loss = align_mmd.new_tensor(0.0)
+        loss = (
+            align_mmd
+            + float(cfg.get("monotonicity_weight", 0.0)) * monotonicity_loss
+            + float(cfg.get("filter_l1_weight", 0.0)) * l1_reg
+            + struct_loss
+        )
 
         opt.zero_grad()
         loss.backward()
         opt.step()
+        if bool(cfg.get("monotonicity_projection", False)):
+            _apply_monotonic_projection(raw_hops, cfg)
 
         history.append(
             {
                 "align_epoch": epoch,
-                "align_mmd": float(loss.item()),
+                "align_mmd": float(align_mmd.item()),
+                "monotonicity_loss": float(monotonicity_loss.item()),
+                "l1_reg": float(l1_reg.item()),
+                "source_struct_bpr": float(source_struct_bpr.item()),
+                "target_struct_bpr": float(target_struct_bpr.item()),
+                "struct_loss": float(struct_loss.item()),
+                "align_total_loss": float(loss.item()),
                 **{f"hop_c{i+1}": float(v) for i, v in enumerate(hop.detach().cpu().tolist())},
             }
         )
@@ -212,8 +318,6 @@ def run_case(
     trainable_filter: bool,
     do_prealign: bool,
 ) -> tuple[list[dict], list[dict], list[float], list[float]]:
-    set_seed(int(cfg["seed"]))
-
     in_dim = int(source_data.x.size(1))
     num_classes = int(torch.max(torch.cat([source_data.y, target_data.y], dim=0)).item()) + 1
 
@@ -231,17 +335,22 @@ def run_case(
 
     align_history: list[dict] = []
     if trainable_filter:
-        raw_hops = nn.Parameter(torch.zeros(k_hops, device=source_data.x.device, dtype=source_data.x.dtype))
+        raw_hops = nn.Parameter(torch.empty(k_hops, device=source_data.x.device, dtype=source_data.x.dtype))
+        with torch.no_grad():
+            # Slight symmetry breaking; softmax(raw_hops) still starts near-uniform.
+            raw_hops.normal_(mean=0.0, std=1e-3)
+        start_hops = _effective_hops(raw_hops, cfg).detach().cpu().tolist()
         if do_prealign:
             align_history = prealign_filter(raw_hops, source_data, target_data, cfg)
             if bool(cfg.get("freeze_after_align", True)):
                 with torch.no_grad():
-                    fixed = _effective_hops(raw_hops).detach()
+                    fixed = _effective_hops(raw_hops, cfg).detach()
                 raw_hops = None
         opt_params = list(model.parameters()) + ([] if raw_hops is None else [raw_hops])
     else:
         raw_hops = None
         opt_params = list(model.parameters())
+        start_hops = fixed.detach().cpu().tolist()
 
     optimizer = torch.optim.Adam(
         opt_params,
@@ -256,10 +365,9 @@ def run_case(
     def current_hops() -> torch.Tensor:
         if raw_hops is None:
             return fixed
-        return _effective_hops(raw_hops)
+        return _effective_hops(raw_hops, cfg)
 
     train_history = []
-    start_hops = current_hops().detach().cpu().tolist()
 
     for epoch in tqdm(range(int(cfg["epochs"]) + 1), desc=f"{case_name} train", leave=False):
         hop = current_hops()
@@ -267,12 +375,19 @@ def run_case(
             model.train()
             src_logits = model(source_data, hop)
             sup_loss = F.cross_entropy(src_logits[source_train_mask], source_data.y[source_train_mask])
-            reg = hop.abs().sum()
-            loss = sup_loss + float(cfg["filter_l1_weight"]) * reg
+            l1_reg = _filter_l1_penalty(raw_hops) if raw_hops is not None else hop.new_tensor(0.0)
+            mono_reg = _monotonicity_loss_increasing(hop)
+            loss = (
+                sup_loss
+                + float(cfg["filter_l1_weight"]) * l1_reg
+                + float(cfg.get("monotonicity_weight", 0.0)) * mono_reg
+            )
 
             optimizer.zero_grad()
             loss.backward()
             optimizer.step()
+            if raw_hops is not None and bool(cfg.get("monotonicity_projection", False)):
+                _apply_monotonic_projection(raw_hops, cfg)
         else:
             loss = torch.tensor(0.0, device=source_data.x.device)
 
@@ -465,7 +580,8 @@ def build_overall_average_rows(dataset_avg_rows: list[dict]) -> list[dict]:
 
 
 def main():
-    set_seed(int(CFG["seed"]))
+    base_seed = int(CFG["seed"])
+    set_seed(base_seed)
     datasets = _build_datasets(CFG)
     timestamp = datetime.now().strftime("%m%d_%H%M%S")
     tag = str(CFG["tag"]).strip()
@@ -476,7 +592,7 @@ def main():
     all_final_rows: list[dict] = []
     all_dataset_avg_rows: list[dict] = []
 
-    for dataset_name in datasets:
+    for d_idx, dataset_name in enumerate(datasets):
         dataset_dir = run_root / dataset_name
         dataset_dir.mkdir(parents=True, exist_ok=True)
         scenarios = _build_scenarios_for_dataset(CFG, dataset_name)
@@ -484,6 +600,8 @@ def main():
 
         print(f"\n##### Dataset: {dataset_name} | scenarios={len(scenarios)} #####")
         for idx, (source_name, target_name) in enumerate(scenarios):
+            scenario_seed = base_seed + d_idx * 10_000 + idx
+            set_seed(scenario_seed)
             scenario_dir = dataset_dir / f"{idx:02d}_{source_name}_{target_name}"
             scenario_dir.mkdir(parents=True, exist_ok=True)
 
@@ -493,7 +611,7 @@ def main():
                 source=source_name,
                 target=target_name,
                 device=str(CFG["device"]),
-                seed=int(CFG["seed"]),
+                seed=scenario_seed,
             )
 
             fixed_rows, fixed_align_rows, fixed_start, fixed_end = run_case(
