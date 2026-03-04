@@ -3,7 +3,7 @@ import os
 
 # should be modified incase of different environments
 CONFIG_DIR = "./configs"
-TUNED_DIR = "./__hps__/"
+TUNED_DIR = "./../__hps__/"
 
 BASELINES = [os.path.splitext(f)[0] for f in os.listdir(f"{CONFIG_DIR}/model_configs/baselines") if f.endswith(".yaml")]
 OURS = [os.path.splitext(f)[0] for f in os.listdir(f"{CONFIG_DIR}/model_configs/ours") if f.endswith(".yaml")]
@@ -41,10 +41,10 @@ def build_config(config_setup: dict, update_config: dict = None, borrow: str = N
         file = None
         if use_tuned == 1: # using the best settings from pygda benchmark
             file = "imported.yaml"
-            TUNED_DIR = "./__hps__/imported"
+            TUNED_DIR = "./../__hps__/imported"
         elif use_tuned == 2:
             file = "best.yaml"
-            TUNED_DIR = "./__hps__/tuned"
+            TUNED_DIR = "./../__hps__/tuned"
 
         source = cfg.expt.source
         target = cfg.expt.target

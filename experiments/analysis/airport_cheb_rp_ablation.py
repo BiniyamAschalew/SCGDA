@@ -926,7 +926,7 @@ def parse_args():
     parser.add_argument(
         "--out_dir",
         type=str,
-        default="__saved__/analysis/airport_cheb_rp_ablation",
+        default="../../__saved__/analysis/airport_cheb_rp_ablation",
     )
     return parser.parse_args()
 

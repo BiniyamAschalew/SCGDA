@@ -23,7 +23,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--output-dir",
         type=str,
-        default=f"/home/bini/codes/GDA/KDD/SCGDA/__saved__/synth_data/csbm_{time.strftime('%m%d_%H%M%S')}",
+        default=f"/home/bini/codes/GDA/KDD/SCGDA/../../__saved__/synth_data/csbm_{time.strftime('%m%d_%H%M%S')}",
         help="Directory where source.npz and target.npz are saved.",
     )
     parser.add_argument("--shift-type", type=str, default="hom_het", choices=["hom_het", "poly"])

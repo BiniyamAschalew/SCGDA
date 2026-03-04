@@ -121,7 +121,7 @@ def validate_imported_files(models: list, pairs: list) -> None:
     missing = []
     for dataset, source, target in pairs:
         for model in models:
-            path = Path("__hps__/imported") / model.lower() / dataset.lower() / f"{source}_{target}" / "imported.yaml"
+            path = Path("../__hps__/imported") / model.lower() / dataset.lower() / f"{source}_{target}" / "imported.yaml"
             if not path.exists():
                 missing.append(str(path))
     if missing:
@@ -217,7 +217,7 @@ def update_progress(path: Path, seed: int, start_time: str, completed: int, tota
 
 
 def load_imported_config(model: str, dataset: str, source: str, target: str):
-    path = Path("__hps__/imported") / model.lower() / dataset.lower() / f"{source}_{target}" / "imported.yaml"
+    path = Path("../__hps__/imported") / model.lower() / dataset.lower() / f"{source}_{target}" / "imported.yaml"
     if not path.exists():
         raise FileNotFoundError(f"Imported config not found: {path}")
     return load_yaml(path), str(path)

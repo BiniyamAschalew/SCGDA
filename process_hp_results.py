@@ -115,7 +115,7 @@ def _load_imported_payload(sample_row: pd.Series) -> dict:
     if candidate and str(candidate).strip():
         path = Path(str(candidate).strip())
     else:
-        path = Path("__hps__/imported") / model / dataset / f"{source}_{target}" / "imported.yaml"
+        path = Path("../__hps__/imported") / model / dataset / f"{source}_{target}" / "imported.yaml"
 
     if not path.exists():
         raise FileNotFoundError(f"Imported config not found: {path}")
@@ -324,7 +324,7 @@ def main() -> None:
     parser.add_argument(
         "--results-dir",
         type=str,
-        default="__saved__/results/hp_tune",
+        default="../../__saved__/results/hp_tune",
         help="Directory to search for result files if --results is not specified",
     )
     parser.add_argument(
@@ -335,12 +335,12 @@ def main() -> None:
     )
     parser.add_argument("--metric", type=str, default="micro_f1")
     parser.add_argument("--metrics", type=str, default="micro_f1,macro_f1")
-    parser.add_argument("--output-root", type=str, default="__hps__/tuned")
+    parser.add_argument("--output-root", type=str, default="../__hps__/tuned")
     parser.add_argument("--time-id", type=str, default="")
     parser.add_argument(
         "--benchmark-dir",
         type=str,
-        default="__saved__/results/benchmark",
+        default="../../__saved__/results/benchmark",
         help="Benchmark root directory. Results are written to <benchmark-dir>/<run_id>/.",
     )
 

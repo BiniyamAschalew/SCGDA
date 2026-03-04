@@ -6,7 +6,7 @@ GPUS=(0 2 3 4 5)
 SEEDS=(2026 2027 2028 2029 2030)
 
 CONFIG="hp3"
-SPACE_DIR="__hps__/space/main.yaml"
+SPACE_DIR="../__hps__/space/main.yaml"
 RUN_ID="$(date +%m%d_%H%M%S)"
 USE_IMPORTED="1"
 

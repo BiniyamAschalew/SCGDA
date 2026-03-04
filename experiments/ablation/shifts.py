@@ -344,7 +344,7 @@ if __name__ == "__main__":
         "kernel_mul": 2.0,
         "kernel_num": 5,
         "fix_sigma": None,
-        "out_dir": "__saved__/analysis/cusom_shifts",
+        "out_dir": "../../__saved__/analysis/cusom_shifts",
     }
 
     summary_rows = []
