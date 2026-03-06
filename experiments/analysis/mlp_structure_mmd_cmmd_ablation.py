@@ -809,7 +809,7 @@ def parse_args():
     parser.add_argument(
         "--out_dir",
         type=str,
-        default="../../__saved__/analysis/mlp_structure_mmd_cmmd_ablation",
+        default="../__saved__/analysis/mlp_structure_mmd_cmmd_ablation",
     )
     return parser.parse_args()
 

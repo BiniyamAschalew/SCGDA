@@ -17,8 +17,8 @@ import torch.nn.functional as F
 from tqdm import tqdm
 
 from models.base_model import BaseGDA
-from models.ours.dlit.cheb_filter import ChebFilter
-from models.ours.dlit.dlit_encoder import DLITEncoder
+from models.ours.dlite.cheb_filter import ChebFilter
+from models.ours.dlite.dlite_encoder import DLITEncoder
 from utils.train_utils.mmd import MMD, mmd_kernel
 
 

@@ -324,7 +324,7 @@ def main() -> None:
     parser.add_argument(
         "--results-dir",
         type=str,
-        default="../../__saved__/results/hp_tune",
+        default="../__saved__/results/hp_tune",
         help="Directory to search for result files if --results is not specified",
     )
     parser.add_argument(
@@ -340,7 +340,7 @@ def main() -> None:
     parser.add_argument(
         "--benchmark-dir",
         type=str,
-        default="../../__saved__/results/benchmark",
+        default="../__saved__/results/benchmark",
         help="Benchmark root directory. Results are written to <benchmark-dir>/<run_id>/.",
     )
 

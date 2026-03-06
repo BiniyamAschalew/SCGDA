@@ -24,6 +24,7 @@ MODELS = {
     21:"kbl", 22:"pairalign",
     23:"simgda_filter",
     24:"filtada",
+    25:"fda",
     }
 
 
@@ -60,7 +61,6 @@ id = {
     "source": [1],
     "target": [0],
 }
-notes = "a2gnn_evaluation"
 
 combined_df = pd.DataFrame()
 cur_time = time.strftime("%m%d%H%M%S")
@@ -140,8 +140,8 @@ for repeat in range(REPEATS):
                                             ignore_index=True)
 
 
-
-result_dir = f"./../../__saved__/results/evaluation/{cur_time}_{notes}.csv"
+notes = f"{dataset}_{model}"
+result_dir = f"./../__saved__/results/evaluation/{cur_time}_{notes}.csv"
 if os.path.exists(result_dir):
     result_dir = to_valid_dir(result_dir)
 

@@ -16,7 +16,7 @@ from models.baselines.adagcn.adagcn import AdaGCN
 from models.ours.simgda_spectral.simgda_spectral import SimGDASpectral
 from models.ours.structalign2.structalign2 import StructAlign2
 from models.ours.simmlp.simmlp import SimMLP
-from models.ours.dlit.dlit import DLIT
+from models.ours.dlite.dlite import DLIT
 from models.ours.bdlite.bdlite import BDlite
 from models.ours.scgda.scgda import SCGDA
 from models.ours.test.test import Test

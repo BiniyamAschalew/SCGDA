@@ -501,7 +501,7 @@ if __name__ == "__main__":
         "mlp_lr": 1e-2,
         "mlp_weight_decay": 5e-4,
         "mlp_epochs": 100,
-        "out_dir": "../../__saved__/analysis/custom_shifts_blog_airport",
+        "out_dir": "../__saved__/analysis/custom_shifts_blog_airport",
     }
 
     summary_rows = []

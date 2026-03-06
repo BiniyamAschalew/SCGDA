@@ -23,6 +23,7 @@ def _adj_norm(edge_index, edge_weight, num_nodes, dtype, lambda_max=2.0):
 
 
 class MonoProp(MessagePassing):
+    """The first coefficient corresponds to the identity, the second to the normalized adjacency, and so on."""
     def forward(self, x, edge_index, parameters, edge_weight=None, lambda_max=2.0):
         params = torch.as_tensor(parameters, device=x.device, dtype=x.dtype).view(-1)
         if params.numel() == 0:

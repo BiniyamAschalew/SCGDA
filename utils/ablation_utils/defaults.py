@@ -30,7 +30,7 @@ DEFAULT_EXPT_CONFIG = {
     "kernel_mul": 2.0,
     "kernel_num": 5,
     "fix_sigma": None,
-    "out_dir": "../../__saved__/analysis/aligner_shifts",
+    "out_dir": "../__saved__/analysis/aligner_shifts",
     # FDA-alignment objective config
     "fda_filter": "cheb",
     "fda_feature_mmd_weight": 0.1,

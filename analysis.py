@@ -63,7 +63,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--results-dir",
         default=None,
-        help="Directory containing benchmark CSV files (e.g., ../../__saved__/results/benchmark/run_0125_123456). If not specified, uses the latest run directory.",
+        help="Directory containing benchmark CSV files (e.g., ../__saved__/results/benchmark/run_0125_123456). If not specified, uses the latest run directory.",
     )
     parser.add_argument(
         "--pattern",
@@ -83,7 +83,7 @@ def parse_args() -> argparse.Namespace:
     )
     parser.add_argument(
         "--output",
-        default="../../__saved__/results/benchmark/benchmark_results9.tex",
+        default="../__saved__/results/benchmark/benchmark_results9.tex",
         help="Path to save the LaTeX table (default: saves in the run directory).",
     )
     parser.add_argument(
@@ -111,14 +111,14 @@ def resolve_paths(
     if files:
         paths = [Path(p) for p in files]
         # Use parent of first file as run_dir
-        run_dir = paths[0].parent if paths else Path("../../__saved__/results/benchmark")
+        run_dir = paths[0].parent if paths else Path("../__saved__/results/benchmark")
     else:
         if results_dir is None:
             # Find the latest run directory
-            benchmark_base = Path("../../__saved__/results/benchmark")
+            benchmark_base = Path("../__saved__/results/benchmark")
             run_dirs = sorted(benchmark_base.glob("run_*"), reverse=True)
             if not run_dirs:
-                raise FileNotFoundError("No run directories found in ../../__saved__/results/benchmark/")
+                raise FileNotFoundError("No run directories found in ../__saved__/results/benchmark/")
             results_dir = str(run_dirs[0])
             print(f"Using latest run directory: {results_dir}")
         
@@ -443,7 +443,7 @@ def main() -> None:
     )
 
     # Use run_dir for output if default output path
-    if args.output == "../../__saved__/results/benchmark/benchmark_results.tex":
+    if args.output == "../__saved__/results/benchmark/benchmark_results.tex":
         output_path = run_dir / "benchmark_results.tex"
     else:
         output_path = Path(args.output)

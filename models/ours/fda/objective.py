@@ -50,6 +50,35 @@ class FDAFilterAlignObjective:
         target_probe = torch.randn_like(target_embed) * probe_std + probe_mean
         return source_probe, target_probe
 
+    @staticmethod
+    def make_semantic_probe(
+        source_embed: torch.Tensor,
+        target_embed: torch.Tensor,
+        source_labels: torch.Tensor,
+        class_conditional: bool = True,
+        eps: float = 1e-6,
+    ) -> tuple[torch.Tensor, torch.Tensor]:
+        source_probe, target_probe = FDAFilterAlignObjective.make_probe(
+            source_embed=source_embed,
+            target_embed=target_embed,
+            eps=eps,
+        )
+        if not bool(class_conditional):
+            return source_probe, target_probe
+
+        semantic_source_probe = torch.empty_like(source_embed)
+        labels = source_labels.view(-1).long()
+        for cls in torch.unique(labels):
+            mask = labels == cls
+            if int(mask.sum().item()) == 0:
+                continue
+            cls_feat = source_embed[mask]
+            mu = cls_feat.mean(dim=0, keepdim=True)
+            std = cls_feat.std(dim=0, keepdim=True).clamp_min(float(eps))
+            semantic_source_probe[mask] = torch.randn_like(cls_feat) * std + mu
+
+        return semantic_source_probe, target_probe
+
     def feature_mmd(self, source_embed: torch.Tensor, target_embed: torch.Tensor) -> torch.Tensor:
         return MMD(
             source_embed,

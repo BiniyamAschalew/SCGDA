@@ -5,10 +5,10 @@ set -euo pipefail
 GPUS=(0 2 3 4 5)
 SEEDS=(2026 2027 2028 2029 2030)
 
-CONFIG="hp3"
-SPACE_DIR="../__hps__/space/main.yaml"
+CONFIG="hp7"
+SPACE_DIR="../__hps__/space/fda.yaml"
 RUN_ID="$(date +%m%d_%H%M%S)"
-USE_IMPORTED="1"
+USE_IMPORTED="0"
 
 EXTRA_ARGS=()
 if [[ "${USE_IMPORTED}" == "1" || "${USE_IMPORTED}" == "true" || "${USE_IMPORTED}" == "TRUE" ]]; then

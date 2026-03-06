@@ -9,7 +9,7 @@ DEFAULT_FILTER_INSPECT_TEST_CONFIG = {
 DEFAULT_FILTER_INSPECT_EXPT_CONFIG = {
     "seed": 0,
     "device": "cuda:6",
-    "out_dir": "../../__saved__/analysis/filter_inspect",
+    "out_dir": "../__saved__/analysis/filter_inspect",
     "max_layers": 5,
     "metric_sample_size": 2000,
     "kernel_mul": 2.0,

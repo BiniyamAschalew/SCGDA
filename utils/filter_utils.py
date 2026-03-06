@@ -1,6 +1,8 @@
 import torch
 
 
+
+
 def _cheb_basis_matrix(order: int, dtype=None, device=None) -> torch.Tensor:
     """Return basis matrix B where T_k(x) = sum_j B[k, j] x^j."""
     if order <= 0:

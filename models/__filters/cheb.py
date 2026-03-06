@@ -25,6 +25,7 @@ def _adj_norm(edge_index, edge_weight, num_nodes, dtype, lambda_max=2.0):
 
 
 class ChebProp(MessagePassing):
+    """ The first coefficient corresponds to identity, the second to the normalized adjacency, and the rest Tk = 2 A Tk-1 - Tk-2. """
     def forward(self, x, edge_index, parameters, edge_weight=None, lambda_max=2.0):
         params = torch.as_tensor(parameters, device=x.device, dtype=x.dtype).view(-1)
         if params.numel() == 0:

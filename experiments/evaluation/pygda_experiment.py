@@ -127,7 +127,7 @@ for repeat in range(REPEATS):
 
 
 
-result_dir = f"./../../__saved__/results/evaluation/{cur_time}_{notes}.csv"
+result_dir = f"./../__saved__/results/evaluation/{cur_time}_{notes}.csv"
 if os.path.exists(result_dir):
     result_dir = to_valid_dir(result_dir)
 
