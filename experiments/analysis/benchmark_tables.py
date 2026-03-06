@@ -62,7 +62,7 @@ def parse_args() -> argparse.Namespace:
     )
     parser.add_argument(
         "--results-dir",
-        default="../__saved__/results/benchmark",
+        default="./__saved__/results/benchmark",
         help="Directory containing benchmark CSV files.",
     )
     parser.add_argument(
@@ -83,7 +83,7 @@ def parse_args() -> argparse.Namespace:
     )
     parser.add_argument(
         "--output",
-        default="../__saved__/results/benchmark/benchmark_results2.tex",
+        default="./__saved__/results/benchmark/benchmark_results2.tex",
         help="Path to save the LaTeX table.",
     )
     parser.add_argument(

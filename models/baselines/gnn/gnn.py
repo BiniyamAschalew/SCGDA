@@ -21,6 +21,7 @@ class GNN(BaseGDA):
 
 
         self.lr = config["model"]["lr"]
+        self.use_mask = config["model"]["use_mask"]
         self.weight_decay = config["model"]["weight_decay"]
 
         self.gnn = None
@@ -36,7 +37,14 @@ class GNN(BaseGDA):
         source_logits = self.gnn(source_data.x, source_data.edge_index)
         target_logits = self.gnn(target_data.x, target_data.edge_index)
 
-        loss = F.nll_loss(source_logits, source_data.y)
+        source_mask = torch.ones_like(source_data.y, dtype=torch.bool, device=self.device)
+        if self.use_mask:
+            source_mask = source_data.train_mask
+
+        source_logits = source_logits[source_mask]
+        source_labels = source_data.y[source_mask]
+
+        loss = F.nll_loss(source_logits, source_labels)
         return loss, source_logits, target_logits
 
 

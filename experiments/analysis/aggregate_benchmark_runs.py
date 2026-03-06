@@ -26,7 +26,7 @@ def parse_args() -> argparse.Namespace:
         "--bench-dir",
         type=str,
         required=True,
-        help="Benchmark folder containing run_* directories, e.g. ../__saved__/results/benchmark/bench5",
+        help="Benchmark folder containing run_* directories, e.g. ./__saved__/results/benchmark/bench5",
     )
     parser.add_argument(
         "--runs",

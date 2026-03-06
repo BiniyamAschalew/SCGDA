@@ -40,7 +40,7 @@ class BaseGDA(ABC):
         src, tgt = config["expt"]["source"], config["expt"]["target"]
         model = config["model"]["name"]
 
-        self.best_model_dir = f"./../__saved__/models/{model}_{src}_{tgt}_{self.time_stamp}.pt"
+        self.best_model_dir = f"./__saved__/odels/{model}_{src}_{tgt}_{self.time_stamp}.pt"
         # ensure directory exists
         try:
             os.makedirs(osp.dirname(self.best_model_dir), exist_ok=True)

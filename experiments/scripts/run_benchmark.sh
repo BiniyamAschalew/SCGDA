@@ -7,7 +7,7 @@ seeds=(200 201 202 203 204)
 config="bench5"
 
 run_timestamp=$(date +"%m%d_%H%M%S")
-run_dir="../__saved__/results/benchmark/${config}/run_${run_timestamp}"
+run_dir="./__saved__/results/benchmark/${config}/run_${run_timestamp}"
 mkdir -p "${run_dir}"
 echo "Saving benchmark results to: ${run_dir}"
 

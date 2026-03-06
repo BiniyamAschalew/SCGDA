@@ -445,7 +445,7 @@ if __name__ == "__main__":
     parser.add_argument(
         "--out_dir",
         type=str,
-        default="../__saved__/analysis/cheb_filter_mmd_comparison",
+        default="./__saved__/analysis/cheb_filter_mmd_comparison",
     )
 
     main(parser.parse_args())

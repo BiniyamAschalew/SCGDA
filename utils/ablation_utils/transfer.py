@@ -53,6 +53,17 @@ def macro_f1_from_logits(logits: torch.Tensor, labels: torch.Tensor) -> float:
     return float(torch.stack(f1_vals).mean().item())
 
 
+def micro_f1_from_logits(logits: torch.Tensor, labels: torch.Tensor) -> float:
+    pred = logits.argmax(dim=1)
+    tp = (pred == labels).sum().float()
+    fp = (pred != labels).sum().float()
+    fn = fp
+    denom = 2.0 * tp + fp + fn
+    if float(denom.item()) <= 0.0:
+        return 0.0
+    return float(((2.0 * tp) / denom).item())
+
+
 def train_eval_transfer_once(
     source_feat: torch.Tensor,
     target_feat: torch.Tensor,
@@ -90,14 +101,17 @@ def train_eval_transfer_once(
     with torch.no_grad():
         src_logits = model(source_feat)
         tgt_logits = model(target_feat)
-        src_acc = float((src_logits.argmax(dim=1) == source_y).float().mean().item())
-        tgt_acc = float((tgt_logits.argmax(dim=1) == target_y).float().mean().item())
+        src_micro = micro_f1_from_logits(src_logits, source_y)
+        tgt_micro = micro_f1_from_logits(tgt_logits, target_y)
         src_macro = macro_f1_from_logits(src_logits, source_y)
         tgt_macro = macro_f1_from_logits(tgt_logits, target_y)
 
     return {
-        "source_acc": src_acc,
-        "target_acc": tgt_acc,
+        "source_micro_f1": src_micro,
+        "target_micro_f1": tgt_micro,
+        # Backward-compatible aliases.
+        "source_acc": src_micro,
+        "target_acc": tgt_micro,
         "source_macro_f1": src_macro,
         "target_macro_f1": tgt_macro,
     }
@@ -174,7 +188,7 @@ def evaluate_transferability(
                 run_rows.append({"case": case, "layer": layer, "repeat": rep, **metrics})
 
     summary_rows = []
-    metrics_keys = ["source_acc", "target_acc", "source_macro_f1", "target_macro_f1"]
+    metrics_keys = ["source_micro_f1", "target_micro_f1", "source_macro_f1", "target_macro_f1"]
     for case in ("normal", "aligned"):
         for layer in range(int(cfg["max_layers"]) + 1):
             subset = [r for r in run_rows if r["case"] == case and int(r["layer"]) == layer]
@@ -199,7 +213,7 @@ def write_transferability_protocol(path: Path) -> None:
         "4) For each k and case, train an MLP on source features/labels only.\n"
         "5) Evaluate the trained MLP on target features/labels with no target supervision.\n"
         "6) Repeat training multiple times (mlp_repeats) with different seeds.\n"
-        "7) Report mean/std across repeats (target accuracy and target macro-F1).\n"
+        "7) Report mean/std across repeats (target micro-F1 and target macro-F1).\n"
     )
     path.write_text(text)
 
@@ -222,10 +236,16 @@ def build_average_target_transfer_rows(
             )
             if normal_row is None or aligned_row is None:
                 continue
+            normal_target = float(
+                normal_row.get("target_micro_f1_mean", normal_row.get("target_acc_mean", 0.0))
+            )
+            aligned_target = float(
+                aligned_row.get("target_micro_f1_mean", aligned_row.get("target_acc_mean", 0.0))
+            )
             paired_vals.append(
                 (
-                    float(normal_row["target_acc_mean"]),
-                    float(aligned_row["target_acc_mean"]),
+                    normal_target,
+                    aligned_target,
                 )
             )
 
@@ -238,6 +258,12 @@ def build_average_target_transfer_rows(
             {
                 "layer": layer,
                 "n_scenarios": int(normal_vals.numel()),
+                "normal_target_micro_f1_mean": float(normal_vals.mean().item()),
+                "normal_target_micro_f1_std": float(normal_vals.std(unbiased=False).item()),
+                "aligned_target_micro_f1_mean": float(aligned_vals.mean().item()),
+                "aligned_target_micro_f1_std": float(aligned_vals.std(unbiased=False).item()),
+                "delta_target_micro_f1_mean": float((aligned_vals - normal_vals).mean().item()),
+                # Backward-compatible aliases.
                 "normal_target_acc_mean": float(normal_vals.mean().item()),
                 "normal_target_acc_std": float(normal_vals.std(unbiased=False).item()),
                 "aligned_target_acc_mean": float(aligned_vals.mean().item()),

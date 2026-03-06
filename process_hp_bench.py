@@ -82,10 +82,10 @@ def scenario_label(row: pd.Series) -> str:
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--run-ids", type=str, help="Comma-separated run IDs")
-    parser.add_argument("--results-dir", type=str, default="../__saved__/results/hp_tune")
+    parser.add_argument("--results-dir", type=str, default="./__saved__/results/hp_tune")
     parser.add_argument("--metric", type=str, default="micro_f1")
     parser.add_argument("--metrics", type=str, default="micro_f1,macro_f1")
-    parser.add_argument("--output-dir", type=str, default="../__saved__/results/hp_tune")
+    parser.add_argument("--output-dir", type=str, default="./__saved__/results/hp_tune")
     parser.add_argument("--name", type=str, default="")
     args = parser.parse_args()
 

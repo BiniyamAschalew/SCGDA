@@ -23,6 +23,9 @@ from models.ours.test.test import Test
 from models.ours.fda.fda import FDA
 from models.ours.simgda_filter.simgda_filter import SimGDAFilter
 from models.ours.filtada.filtada import FiltADA
+from models.ours.adaf.adaf import ADAF
+from models.ours.adgfn.adgfn import ADGFN
+from models.ours.dgf.dgf import DGF
 
 # Imported models from pygda
 from models.imported.a2gnn.a2gnn import A2GNN as A2GNN_imported
@@ -71,9 +74,12 @@ def build_model(config: dict, from_pygda: bool = False):
         "fda": FDA,
         "simgda_filter": SimGDAFilter,
         "filtada": FiltADA,
+        "adaf": ADAF,
+        "adgfn": ADGFN,
         # "simgda_role": SimGDARole,
         # "simgda_cheb": SimGDACheb,
         "test": Test,
+        "dgf": DGF,
     }
 
     if from_pygda:

@@ -20,11 +20,10 @@ MODELS = {
     13:"acdne", 14:"asn", 15:"adagcn",
     16:"dlit", 17:"simgda_cheb",
     18:"scgda", 19:"test",
-    20:"bdlite",
-    21:"kbl", 22:"pairalign",
-    23:"simgda_filter",
-    24:"filtada",
-    25:"fda",
+    20:"bdlite", 21:"kbl", 22:"pairalign",
+    23:"simgda_filter", 24:"filtada",
+    25:"fda", 26:"adaf", 27:"adgfn",
+    28:"dgf",
     }
 
 
@@ -46,20 +45,21 @@ SEED = 0
 # EPOCHS = 200
 DEVICE = "cuda:4"
 
-USE_TUNED = 2
-# BORROW = None
-# BORROW = "a2gnn"
-BORROW = "dgsda"
+USE_TUNED = 0
+
+BORROW = None
+# BORROW = "dgsda"
+# BORROW = "adagcn"
 
 USE_DEFAULT = False
 WANDB = False
-FROM_PYGDA = True
+FROM_PYGDA = False
 
 id = {
-    "model": [16],
-    "dataset": [0,1],
-    "source": [1],
-    "target": [0],
+    "model": [0],
+    "dataset": [1],
+    "source": [0],
+    "target": [1],
 }
 
 combined_df = pd.DataFrame()
@@ -141,7 +141,8 @@ for repeat in range(REPEATS):
 
 
 notes = f"{dataset}_{model}"
-result_dir = f"./../__saved__/results/evaluation/{cur_time}_{notes}.csv"
+result_dir = f"./__saved__/results/evaluation/{cur_time}_{notes}.csv"
+os.makedirs(os.path.dirname(result_dir), exist_ok=True)
 if os.path.exists(result_dir):
     result_dir = to_valid_dir(result_dir)
 

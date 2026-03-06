@@ -343,7 +343,7 @@ def parse_args():
     parser.add_argument(
         "--out_dir",
         type=str,
-        default="../__saved__/analysis/cheb_gcn_operator_equivalence",
+        default="./__saved__/analysis/cheb_gcn_operator_equivalence",
     )
     return parser.parse_args()
 

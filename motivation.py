@@ -9,7 +9,6 @@ matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 import torch
 import torch.nn.functional as F
-from sklearn.discriminant_analysis import LinearDiscriminantAnalysis
 from torch import nn
 
 from models.__filters.mono import MonoProp
@@ -56,12 +55,6 @@ def _resolve_device(device: str) -> str:
     return "cpu" if str(device).startswith("cuda") and not torch.cuda.is_available() else str(device)
 
 
-def _fit_lda(xs, ys, lda_dim, lda_eps):
-    lda = LinearDiscriminantAnalysis(n_components=lda_dim, tol=lda_eps)
-    lda.fit(xs.detach().cpu().numpy(), ys.detach().cpu().numpy())
-    return torch.from_numpy(lda.scalings_).float().to(xs.device)
-
-
 def _remap_labels_contiguous(ys: torch.Tensor, yt: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor]:
     classes = torch.unique(torch.cat([ys.view(-1), yt.view(-1)], dim=0), sorted=True)
     mapping = {int(c.item()): i for i, c in enumerate(classes)}
@@ -72,15 +65,90 @@ def _remap_labels_contiguous(ys: torch.Tensor, yt: torch.Tensor) -> tuple[torch.
     return _remap(ys), _remap(yt)
 
 
-def _try_fit_joint_lda(xs, xt, ys, yt, lda_dim, lda_eps):
-    n_classes = int(torch.unique(torch.cat([ys, yt], dim=0)).numel())
-    out_dim = min(int(lda_dim), int(xs.size(1)), n_classes - 1)
+class MLPProjector(nn.Module):
+    def __init__(self, in_dim: int, out_dim: int, hidden_dim: int, num_layers: int, dropout: float):
+        super().__init__()
+        if num_layers < 1:
+            raise ValueError(f"num_layers must be >= 1, got {num_layers}")
+        self.dropout = float(dropout)
+        dims = [int(in_dim)]
+        if num_layers == 1:
+            dims.append(int(out_dim))
+        else:
+            dims.extend([int(hidden_dim)] * (int(num_layers) - 1))
+            dims.append(int(out_dim))
+        self.layers = nn.ModuleList(
+            [nn.Linear(dims[i], dims[i + 1]) for i in range(len(dims) - 1)]
+        )
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        h = x
+        for i, layer in enumerate(self.layers):
+            h = layer(h)
+            if i < len(self.layers) - 1:
+                h = F.relu(h)
+                h = F.dropout(h, p=self.dropout, training=self.training)
+        return h
+
+
+def _mlp_project_features(
+    source_x: torch.Tensor,
+    target_x: torch.Tensor,
+    source_y: torch.Tensor,
+    source_train_mask: torch.Tensor,
+    cfg,
+) -> tuple[torch.Tensor, torch.Tensor]:
+    in_dim = int(source_x.size(1))
+    out_dim = int(
+        _cfg_get(
+            cfg,
+            "proj_dim",
+            _cfg_get(cfg, "lda_dim", in_dim),
+        )
+    )
     if out_dim <= 0:
-        return None
-    x = torch.cat([xs, xt], dim=0)
-    y = torch.cat([ys, yt], dim=0)
-    w = _fit_lda(x, y, out_dim, float(lda_eps))
-    return w[:, :out_dim]
+        out_dim = in_dim
+    out_dim = min(out_dim, in_dim)
+    if out_dim == in_dim and not bool(_cfg_get(cfg, "force_projection", False)):
+        return source_x, target_x
+
+    hidden_dim = int(_cfg_get(cfg, "proj_hidden_dim", max(32, min(256, in_dim))))
+    num_layers = int(_cfg_get(cfg, "proj_layers", 2))
+    dropout = float(_cfg_get(cfg, "proj_dropout", 0.0))
+    epochs = int(_cfg_get(cfg, "proj_epochs", 120))
+    lr = float(_cfg_get(cfg, "proj_lr", 1e-3))
+    weight_decay = float(_cfg_get(cfg, "proj_weight_decay", 5e-4))
+
+    num_classes = int(source_y.max().item()) + 1
+    projector = MLPProjector(
+        in_dim=in_dim,
+        out_dim=out_dim,
+        hidden_dim=hidden_dim,
+        num_layers=num_layers,
+        dropout=dropout,
+    ).to(source_x.device)
+    classifier = nn.Linear(out_dim, num_classes).to(source_x.device)
+    optimizer = torch.optim.Adam(
+        list(projector.parameters()) + list(classifier.parameters()),
+        lr=lr,
+        weight_decay=weight_decay,
+    )
+
+    for _ in range(max(1, epochs)):
+        projector.train()
+        classifier.train()
+        optimizer.zero_grad()
+        source_proj = projector(source_x)
+        source_logits = classifier(source_proj)
+        loss = F.cross_entropy(source_logits[source_train_mask], source_y[source_train_mask])
+        loss.backward()
+        optimizer.step()
+
+    projector.eval()
+    with torch.no_grad():
+        source_proj = projector(source_x).detach()
+        target_proj = projector(target_x).detach()
+    return source_proj, target_proj
 
 
 def _parse_fix_sigma(fix_sigma):
@@ -148,7 +216,7 @@ def _aggregate_case_layer(rows: list[dict], max_layers: int, metric_keys: list[s
     cases = sorted({str(r["case"]) for r in rows})
     out = []
     for case in cases:
-        for layer in range(1, int(max_layers) + 1):
+        for layer in range(0, int(max_layers) + 1):
             layer_rows = [r for r in rows if str(r["case"]) == case and int(r["layer"]) == layer]
             if not layer_rows:
                 continue
@@ -173,7 +241,7 @@ def _average_case_layer_summaries(
     cases = sorted({str(r["case"]) for rows in all_summaries for r in rows})
     out = []
     for case in cases:
-        for layer in range(1, int(max_layers) + 1):
+        for layer in range(0, int(max_layers) + 1):
             layer_rows = [
                 r
                 for rows in all_summaries
@@ -309,6 +377,107 @@ def _plot_alignment_history(path: Path, nonadv_history: list[dict], adv_history:
     fig.suptitle(title)
     path.parent.mkdir(parents=True, exist_ok=True)
     fig.tight_layout()
+    fig.savefig(path, dpi=200)
+    plt.close(fig)
+    return True
+
+
+def _adjacency_reference_coeffs(num_terms: int) -> list[float]:
+    ref = [0.0 for _ in range(max(1, int(num_terms)))]
+    ref[1 if int(num_terms) > 1 else 0] = 1.0
+    return ref
+
+
+def _plot_monomial_basis_params_by_term(
+    path: Path,
+    nonadv_coeff_rows: list[dict],
+    adv_coeff_rows: list[dict],
+    title: str,
+) -> bool:
+    if not nonadv_coeff_rows and not adv_coeff_rows:
+        return False
+
+    target_nonadv_rows = [r for r in nonadv_coeff_rows if str(r.get("domain", "")) == "target"]
+    target_adv_rows = [r for r in adv_coeff_rows if str(r.get("domain", "")) == "target"]
+    if not target_nonadv_rows and not target_adv_rows:
+        return False
+
+    rows = []
+    rows.extend(target_nonadv_rows)
+    rows.extend(target_adv_rows)
+    terms = sorted({int(r["term"]) for r in rows})
+    if not terms:
+        return False
+
+    ref = _adjacency_reference_coeffs(max(terms) + 1)
+    n_cols = len(terms)
+
+    fig, axes = plt.subplots(
+        1,
+        n_cols,
+        figsize=(3.8 * n_cols, 3.6),
+        squeeze=False,
+        sharex=False,
+        sharey=False,
+    )
+
+    for col_idx, term in enumerate(terms):
+        ax = axes[0][col_idx]
+        nonadv_series = [r for r in target_nonadv_rows if int(r["term"]) == term]
+        adv_series = [r for r in target_adv_rows if int(r["term"]) == term]
+        nonadv_series.sort(key=lambda x: int(x["epoch"]))
+        adv_series.sort(key=lambda x: int(x["epoch"]))
+
+        if nonadv_series:
+            ax.plot(
+                [int(r["epoch"]) for r in nonadv_series],
+                [float(r["coeff"]) for r in nonadv_series],
+                linewidth=1.8,
+                color="tab:orange",
+                label="non-adversarial",
+            )
+        if adv_series:
+            ax.plot(
+                [int(r["epoch"]) for r in adv_series],
+                [float(r["coeff"]) for r in adv_series],
+                linewidth=1.8,
+                color="tab:green",
+                label="adversarial",
+            )
+        ref_val = ref[term] if term < len(ref) else 0.0
+        ax.axhline(
+            y=ref_val,
+            linestyle="--",
+            linewidth=1.3,
+            color="tab:blue",
+            alpha=0.8,
+            label="fixed adjacency ref",
+        )
+        ax.set_title(f"T{term}")
+        if col_idx == 0:
+            ax.set_ylabel("target\ncoefficient")
+        ax.set_xlabel("Alignment epoch")
+        ax.grid(alpha=0.3)
+
+    handles, labels = axes[0][0].get_legend_handles_labels()
+    seen = set()
+    uniq_handles = []
+    uniq_labels = []
+    for handle, label in zip(handles, labels):
+        if label in seen or not label:
+            continue
+        seen.add(label)
+        uniq_handles.append(handle)
+        uniq_labels.append(label)
+    if uniq_handles:
+        fig.legend(uniq_handles, uniq_labels, ncol=min(3, len(uniq_labels)), loc="upper center")
+    fig.suptitle(
+        f"{title}\nTarget monomial coeffs by term | reference={_adjacency_reference_coeffs(max(terms) + 1)}",
+        fontsize=11,
+    )
+
+    path.parent.mkdir(parents=True, exist_ok=True)
+    fig.tight_layout(rect=[0, 0, 1, 0.9])
     fig.savefig(path, dpi=200)
     plt.close(fig)
     return True
@@ -500,6 +669,7 @@ def _train_monomial_aligner(
     adv_steps = max(1, int(_cfg_get(cfg, "adv_steps", 1)))
 
     history_rows = []
+    coeff_history_rows = []
 
     for epoch in range(1, align_epochs + 1):
         adv_probe_mmd_val = 0.0
@@ -678,6 +848,26 @@ def _train_monomial_aligner(
                     row["target_adv_scale_mean"] = 0.0
 
                 history_rows.append(row)
+                for term_idx, val in enumerate(source_coeff_now.tolist()):
+                    coeff_history_rows.append(
+                        {
+                            "epoch": float(epoch),
+                            "regime": "mono_adv_aligned" if adversarial else "mono_aligned",
+                            "domain": "source",
+                            "term": float(term_idx),
+                            "coeff": float(val),
+                        }
+                    )
+                for term_idx, val in enumerate(target_coeff_now.tolist()):
+                    coeff_history_rows.append(
+                        {
+                            "epoch": float(epoch),
+                            "regime": "mono_adv_aligned" if adversarial else "mono_aligned",
+                            "domain": "target",
+                            "term": float(term_idx),
+                            "coeff": float(val),
+                        }
+                    )
 
     with torch.no_grad():
         final_source_coeff = _effective_filter(source_filter_logits, filter_temperature).detach()
@@ -688,6 +878,7 @@ def _train_monomial_aligner(
         "source_coeff": final_source_coeff,
         "target_coeff": final_target_coeff,
         "history": history_rows,
+        "coeff_history": coeff_history_rows,
     }
 
 
@@ -720,7 +911,7 @@ def _evaluate_case_layers(
         idx_t = sample_idx(target_layers[0].size(0), n, target_layers[0].device)
 
         for case, (src_layers, tgt_layers) in case_to_layers.items():
-            for layer in range(1, max_layers + 1):
+            for layer in range(0, max_layers + 1):
                 source_feat = src_layers[layer].detach()
                 target_feat = tgt_layers[layer].detach()
 
@@ -749,16 +940,16 @@ def _evaluate_case_layers(
                     cfg=cfg,
                     seed=int(_cfg_get(cfg, "seed", 0)) + 50000 + 1000 * layer + 100 * trial,
                 )
-                src_acc = float(transfer_metrics["source_acc"])
-                tgt_acc = float(transfer_metrics["target_acc"])
+                src_micro = float(transfer_metrics["source_micro_f1"])
+                tgt_micro = float(transfer_metrics["target_micro_f1"])
                 transfer_rows.append(
                     {
                         "trial": float(trial),
                         "case": case,
                         "layer": float(layer),
-                        "source_micro_f1": src_acc,
-                        "target_micro_f1": tgt_acc,
-                        "delta_micro_f1": src_acc - tgt_acc,
+                        "source_micro_f1": src_micro,
+                        "target_micro_f1": tgt_micro,
+                        "delta_micro_f1": src_micro - tgt_micro,
                     }
                 )
 
@@ -819,19 +1010,14 @@ def run_case(config):
         target_data.y.view(-1).long(),
     )
 
-    w = _try_fit_joint_lda(
-        source_x,
-        target_x,
-        source_y,
-        target_y,
-        _cfg_get(config, "lda_dim", 32),
-        _cfg_get(config, "lda_eps", 1e-6),
-    )
-    if w is not None:
-        source_x = source_x @ w
-        target_x = target_x @ w
-
     source_train_mask = get_source_train_mask(source_data).to(source_x.device)
+    source_x, target_x = _mlp_project_features(
+        source_x=source_x,
+        target_x=target_x,
+        source_y=source_y,
+        source_train_mask=source_train_mask,
+        cfg=config,
+    )
 
     nonadv_state = _train_monomial_aligner(
         source_data=source_data,
@@ -921,6 +1107,8 @@ def run_case(config):
     coeff_rows = _build_coeff_rows(nonadv_state, adv_state)
     nonadv_history = nonadv_state["history"]
     adv_history = adv_state["history"]
+    nonadv_coeff_history = nonadv_state["coeff_history"]
+    adv_coeff_history = adv_state["coeff_history"]
 
     save_rows(out / "case_shift_trials.csv", shift_rows)
     save_rows(out / "case_shift_summary.csv", shift_summary)
@@ -929,6 +1117,8 @@ def run_case(config):
     save_rows(out / "filter_coefficients.csv", coeff_rows)
     save_rows(out / "mono_aligned_history.csv", nonadv_history)
     save_rows(out / "mono_adv_aligned_history.csv", adv_history)
+    save_rows(out / "mono_aligned_coeff_history.csv", nonadv_coeff_history)
+    save_rows(out / "mono_adv_aligned_coeff_history.csv", adv_coeff_history)
 
     save_json(out / "motivation_config.json", to_plain_dict(config))
     save_json(out / "case_shift_summary.json", shift_summary)
@@ -958,6 +1148,15 @@ def run_case(config):
         title=f"{config.dataset}: {config.source}->{config.target} (alignment training)",
     ):
         print(f"[saved] {align_plot}")
+
+    adv_coeff_plot = out / "mono_basis_parameter.png"
+    if _plot_monomial_basis_params_by_term(
+        adv_coeff_plot,
+        nonadv_coeff_history,
+        adv_coeff_history,
+        title=f"{config.dataset}: {config.source}->{config.target}",
+    ):
+        print(f"[saved] {adv_coeff_plot}")
 
     return shift_summary, transfer_summary, out
 
@@ -1040,38 +1239,6 @@ def run_all_scenarios(scenarios, config):
                 )
                 print(f"[failed] {dataset} {source}->{target}: {exc}")
 
-    save_rows(out_root / "summary_final_layer.csv", final_rows)
-
-    global_shift_avg = _average_case_layer_summaries(
-        all_shift_summary,
-        max_layers,
-        SHIFT_CASE_SUMMARY_KEYS,
-    )
-    global_transfer_avg = _average_case_layer_summaries(
-        all_transfer_summary,
-        max_layers,
-        TRANSFER_CASE_SUMMARY_KEYS,
-    )
-    save_rows(out_root / "global_case_shift_layers.csv", global_shift_avg)
-    save_rows(out_root / "global_case_transfer_layers.csv", global_transfer_avg)
-
-    global_transfer_plot = out_root / "global_case_transfer_accuracy.png"
-    if _plot_case_transfer_accuracy(
-        global_transfer_plot,
-        global_transfer_avg,
-        title="Global average transfer accuracy (3-MLP)",
-    ):
-        print(f"[saved] {global_transfer_plot}")
-
-    global_shift_plot = out_root / "global_case_shift_components.png"
-    if _plot_case_shift_components(
-        global_shift_plot,
-        global_shift_avg,
-        title="Global average shift components",
-    ):
-        print(f"[saved] {global_shift_plot}")
-
-    for dataset in scenarios.keys():
         ddir = out_root / dataset
         ddir.mkdir(parents=True, exist_ok=True)
 
@@ -1103,6 +1270,37 @@ def run_all_scenarios(scenarios, config):
             title=f"{dataset}: average shift components",
         ):
             print(f"[saved] {dataset_shift_plot}")
+
+    save_rows(out_root / "summary_final_layer.csv", final_rows)
+
+    global_shift_avg = _average_case_layer_summaries(
+        all_shift_summary,
+        max_layers,
+        SHIFT_CASE_SUMMARY_KEYS,
+    )
+    global_transfer_avg = _average_case_layer_summaries(
+        all_transfer_summary,
+        max_layers,
+        TRANSFER_CASE_SUMMARY_KEYS,
+    )
+    save_rows(out_root / "global_case_shift_layers.csv", global_shift_avg)
+    save_rows(out_root / "global_case_transfer_layers.csv", global_transfer_avg)
+
+    global_transfer_plot = out_root / "global_case_transfer_accuracy.png"
+    if _plot_case_transfer_accuracy(
+        global_transfer_plot,
+        global_transfer_avg,
+        title="Global average transfer accuracy (3-MLP)",
+    ):
+        print(f"[saved] {global_transfer_plot}")
+
+    global_shift_plot = out_root / "global_case_shift_components.png"
+    if _plot_case_shift_components(
+        global_shift_plot,
+        global_shift_avg,
+        title="Global average shift components",
+    ):
+        print(f"[saved] {global_shift_plot}")
 
     failed_path = out_root / "failed_scenarios.csv"
     if failed_rows:

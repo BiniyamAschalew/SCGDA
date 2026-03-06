@@ -505,7 +505,7 @@ def parse_args():
     parser.add_argument(
         "--out_dir",
         type=str,
-        default="../__saved__/analysis/airport_square_filter_recovery",
+        default="./__saved__/analysis/airport_square_filter_recovery",
     )
     return parser.parse_args()
 
