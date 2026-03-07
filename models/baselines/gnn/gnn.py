@@ -89,18 +89,15 @@ class GNN(BaseGDA):
 
             self.log(epoch, epoch_loss, train_results)
 
-        ### removing the best model saving logic    
-        #     early_stop = self.early_stop_check(self.gnn, result=train_results, epoch=epoch)
+        # end_time = time.time()
+        # source validation performance
 
-        #     if early_stop == "stop":
-        #         break
-        #     elif early_stop == "save":
-        #         torch.save(self.gnn.state_dict(), self.best_model_dir)
-
-        # # after training, load the best model
-        # self.gnn.load_state_dict(torch.load(self.best_model_dir))
-        # if self.verbose >= 1:
-        #     print(f"== Best Model from Epoch {self.best_epoch+1:03d} with Val Micro-F1: {self.best_val:.4f} ==")
+        source_logits, source_labels = self.predict(source_data)
+        val_logits = source_logits[source_data.val_mask]
+        val_labels = source_labels[source_data.val_mask]
+        val_results = self.metrics(val_logits, val_labels)
+        self.log(epoch + 3000, epoch_loss, val_results)
+        
 
         self.finish()
 

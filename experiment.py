@@ -23,7 +23,7 @@ MODELS = {
     20:"bdlite", 21:"kbl", 22:"pairalign",
     23:"simgda_filter", 24:"filtada",
     25:"fda", 26:"adaf", 27:"adgfn",
-    28:"dgf",
+    28:"dgf", 29:"fan"
     }
 
 
@@ -43,7 +43,7 @@ role_type = ROLE_TYPES[2]
 
 SEED = 0
 # EPOCHS = 200
-DEVICE = "cuda:4"
+DEVICE = "cuda:6"
 
 USE_TUNED = 0
 

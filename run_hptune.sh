@@ -2,7 +2,7 @@
 # Run HP tuning in parallel across GPUs/seeds.
 set -euo pipefail
 
-GPUS=(6 2 3 4 5)
+GPUS=(1 2 3 4 5)
 SEEDS=(2026 2027 2028 2029 2030)
 
 CONFIG="hp9"

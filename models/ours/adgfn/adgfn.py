@@ -28,7 +28,7 @@ class LearnableProbeDistribution(nn.Module):
 
 
 class ADGFN(BaseGDA):
-    """AdaGCN with adversarially learned monomial filter coefficients."""
+    """AdaGCN with per-domain learnable filters and adversarial probe alignment."""
 
     def __init__(self, config):
         super(ADGFN, self).__init__(config)
@@ -44,9 +44,9 @@ class ADGFN(BaseGDA):
         self.mono_lambda_max = float(config["model"].get("mono_lambda_max", 2.0))
         self.mono_filter_temperature = float(config["model"].get("mono_filter_temperature", 1.0))
         self.mono_init = str(config["model"].get("mono_init", "uniform"))
+        """if mono_init is 'adj' or 'a1', initialize the filter to favor adjacency (A^1)."""
 
         self.probe_mmd_weight = float(config["model"].get("probe_mmd_weight", 1.0))
-        self.source_semantic_weight = float(config["model"].get("source_semantic_weight", 1.0))
 
         self.align_sample_size = int(config["model"].get("align_sample_size", 1024))
         self.kernel_mul = float(config["model"].get("kernel_mul", 2.0))
@@ -54,8 +54,13 @@ class ADGFN(BaseGDA):
         self.fix_sigma = self._parse_fix_sigma(config["model"].get("fix_sigma", None))
 
         self.adv_steps = max(1, int(config["model"].get("adv_steps", 1)))
-        self.adv_lr = float(config["model"].get("adv_lr", 3e-3))
-        self.adv_weight_decay = float(config["model"].get("adv_weight_decay", 0.0))
+
+        # self.adv_lr = float(config["model"].get("adv_lr", 3e-3))
+        # self.adv_weight_decay = float(config["model"].get("adv_weight_decay", 0.0))
+        
+        self.adv_lr = self.lr # use the same learning rate
+        self.adv_weight_decay = self.weight_decay # use the same weight decay
+        # this is used to regularize the learnable probe distribution to prevent it from diverging too much and causing instability
         self.adv_distribution_reg_weight = float(
             config["model"].get("adv_distribution_reg_weight", 1e-3)
         )
@@ -69,7 +74,6 @@ class ADGFN(BaseGDA):
         self.mono_prop = MonoProp().to(self.device)
         self.source_filter_logits = None
         self.target_filter_logits = None
-        self.semantic_head = None
         self.source_dist = None
         self.target_dist = None
 
@@ -102,6 +106,7 @@ class ADGFN(BaseGDA):
         return torch.softmax(logits / t, dim=0)
 
     def _init_filter_logits(self, init_mode: str, num_terms: int) -> torch.Tensor:
+        """Initialize the filter coefficients' logits based on the specified mode."""
         mode = str(init_mode).lower()
         logits = torch.zeros(num_terms, device=self.device)
         if mode in {"adj", "adjacency", "a1"}:
@@ -131,15 +136,11 @@ class ADGFN(BaseGDA):
     def _apply_filter(self, x: torch.Tensor, data, coeff: torch.Tensor) -> torch.Tensor:
         if self.mode != "node":
             return x
-        # MonoProp computes sum_k c_k A^k x. For (-A) basis we use c_k = coeff_k * (-1)^k.
-        signed_coeff = coeff.clone()
-        if signed_coeff.numel() > 1:
-            signed_coeff[1::2] = -signed_coeff[1::2]
         edge_weight = getattr(data, "edge_weight", None)
         return self.mono_prop(
             x,
             data.edge_index,
-            parameters=signed_coeff,
+            parameters=coeff,
             edge_weight=edge_weight,
             lambda_max=self.mono_lambda_max,
         )
@@ -151,9 +152,26 @@ class ADGFN(BaseGDA):
         self.target_filter_logits = nn.Parameter(
             self._init_filter_logits(self.mono_init, self.num_terms), requires_grad=True
         )
-        self.semantic_head = nn.Linear(self.hid_dim, self.num_classes).to(self.device)
         self.source_dist = LearnableProbeDistribution(self.hid_dim).to(self.device)
         self.target_dist = LearnableProbeDistribution(self.hid_dim).to(self.device)
+
+    def _filtered_embeddings(
+        self,
+        source_data,
+        target_data,
+        detach_filters: bool = False,
+    ) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]:
+        encoded_source = self.adgfn(source_data)
+        encoded_target = self.adgfn(target_data)
+
+        source_logits = self.source_filter_logits.detach() if detach_filters else self.source_filter_logits
+        target_logits = self.target_filter_logits.detach() if detach_filters else self.target_filter_logits
+        coeff_s = self._effective_filter(source_logits)
+        coeff_t = self._effective_filter(target_logits)
+
+        filtered_source = self._apply_filter(encoded_source, source_data, coeff_s)
+        filtered_target = self._apply_filter(encoded_target, target_data, coeff_t)
+        return encoded_source, encoded_target, filtered_source, filtered_target
 
     def init_model(self):
         return AdaGCNBase(
@@ -190,13 +208,11 @@ class ADGFN(BaseGDA):
 
     def forward_model(self, source_data, target_data):
         for _ in range(10):
-            encoded_source = self.adgfn(source_data)
-            encoded_target = self.adgfn(target_data)
-
-            coeff_s = self._effective_filter(self.source_filter_logits.detach())
-            coeff_t = self._effective_filter(self.target_filter_logits.detach())
-            filtered_source = self._apply_filter(encoded_source, source_data, coeff_s)
-            filtered_target = self._apply_filter(encoded_target, target_data, coeff_t)
+            _, _, filtered_source, filtered_target = self._filtered_embeddings(
+                source_data,
+                target_data,
+                detach_filters=True,
+            )
 
             gp_loss = self.gradient_penalty(filtered_source, filtered_target)
             dis_s = torch.mean(self.discriminator(filtered_source).reshape(-1))
@@ -209,13 +225,10 @@ class ADGFN(BaseGDA):
             loss.backward()
             self.c_optimizer.step()
 
-        encoded_source = self.adgfn(source_data)
-        encoded_target = self.adgfn(target_data)
-
-        coeff_s = self._effective_filter(self.source_filter_logits)
-        coeff_t = self._effective_filter(self.target_filter_logits)
-        filtered_source = self._apply_filter(encoded_source, source_data, coeff_s)
-        filtered_target = self._apply_filter(encoded_target, target_data, coeff_t)
+        encoded_source, encoded_target, filtered_source, filtered_target = self._filtered_embeddings(
+            source_data,
+            target_data,
+        )
 
         source_logits = self.adgfn.cls_model(filtered_source)
         cls_loss = self.adgfn.loss_func(source_logits, source_data.y)
@@ -233,16 +246,14 @@ class ADGFN(BaseGDA):
             source_probe = self.source_dist.sample(source_probe_base)
             target_probe = self.target_dist.sample(target_probe_base)
 
+        coeff_s = self._effective_filter(self.source_filter_logits)
+        coeff_t = self._effective_filter(self.target_filter_logits)
         source_push = self._apply_filter(source_probe, source_data, coeff_s)
         target_push = self._apply_filter(target_probe, target_data, coeff_t)
         probe_mmd_loss = self._sampled_probe_mmd(source_push, target_push)
 
-        semantic_logits = self.semantic_head(filtered_source)
-        semantic_loss = F.cross_entropy(semantic_logits, source_data.y)
-
         loss = cls_loss + dis_loss * self.domain_weight
         loss = loss + self.probe_mmd_weight * probe_mmd_loss
-        loss = loss + self.source_semantic_weight * semantic_loss
 
         return loss, source_logits, target_logits
 
@@ -292,8 +303,7 @@ class ADGFN(BaseGDA):
 
         optimizer = torch.optim.Adam(
             list(self.adgfn.parameters())
-            + [self.source_filter_logits, self.target_filter_logits]
-            + list(self.semantic_head.parameters()),
+            + [self.source_filter_logits, self.target_filter_logits],
             lr=self.lr,
             weight_decay=self.weight_decay,
         )
@@ -329,7 +339,6 @@ class ADGFN(BaseGDA):
                 zip(self.source_loader, self.target_loader)
             ):
                 self.adgfn.train()
-                self.semantic_head.train()
                 self.source_dist.train()
                 self.target_dist.train()
 
@@ -374,7 +383,6 @@ class ADGFN(BaseGDA):
 
     def predict(self, data, source=False):
         self.adgfn.eval()
-        self.semantic_head.eval()
 
         if source:
             for idx, sampled_data in enumerate(self.source_loader):

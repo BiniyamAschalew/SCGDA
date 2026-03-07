@@ -1,0 +1,7 @@
+AdaGCN uses a shared encoder for source and target graphs, trains a discriminator with gradient penalty on the learned embeddings, and optimizes source classification plus domain alignment.
+
+ADGFN now keeps that AdaGCN training structure intact and changes only two things:
+1. After the shared AdaGCN encoder, it applies a separate learnable monomial graph filter to each domain.
+2. It adds an adversarial probe-distribution game so the source and target filters are trained to align the pushforward of probe features, while the probe distributions try to make that alignment harder.
+
+In short, AdaGCN learns domain-invariant embeddings with adversarial alignment. ADGFN keeps the same backbone, classifier, discriminator, and gradient-penalty workflow, but gives each domain its own learnable post-encoder filter and regularizes those filters through adversarial probe matching.

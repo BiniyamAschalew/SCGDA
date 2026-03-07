@@ -121,7 +121,7 @@ def validate_imported_files(models: list, pairs: list) -> None:
     missing = []
     for dataset, source, target in pairs:
         for model in models:
-            path = Path("../__hps__/imported") / model.lower() / dataset.lower() / f"{source}_{target}" / "imported.yaml"
+            path = Path("./__hps__/imported") / model.lower() / dataset.lower() / f"{source}_{target}" / "imported.yaml"
             if not path.exists():
                 missing.append(str(path))
     if missing:
@@ -141,6 +141,12 @@ def combo_is_valid(model: str, hp_params: dict) -> bool:
         except Exception:
             return False
     return True
+
+
+def normalize_optional_text(value) -> str:
+    if value is None:
+        return ""
+    return str(value).strip().lower()
 
 
 def normalize_hp_id(value):
@@ -167,6 +173,7 @@ def load_completed_keys(result_path: Path, seed: int) -> set:
             row.get("target"),
             row.get("model"),
             normalize_hp_id(row.get("hp_id")),
+            normalize_optional_text(row.get("borrow_model")),
         )
         for row in rows
     }
@@ -217,10 +224,37 @@ def update_progress(path: Path, seed: int, start_time: str, completed: int, tota
 
 
 def load_imported_config(model: str, dataset: str, source: str, target: str):
-    path = Path("../__hps__/imported") / model.lower() / dataset.lower() / f"{source}_{target}" / "imported.yaml"
+    path = Path("./__hps__/imported") / model.lower() / dataset.lower() / f"{source}_{target}" / "imported.yaml"
     if not path.exists():
         raise FileNotFoundError(f"Imported config not found: {path}")
     return load_yaml(path), str(path)
+
+
+def validate_borrowed_files(borrow_model: str, pairs: list) -> None:
+    missing = []
+    for dataset, source, target in pairs:
+        path = Path("./__hps__/tuned") / borrow_model.lower() / dataset.lower() / f"{source}_{target}" / "best.yaml"
+        if not path.exists():
+            missing.append(str(path))
+    if missing:
+        sample = "\n".join(missing[:12])
+        suffix = "" if len(missing) <= 12 else f"\n... (+{len(missing)-12} more)"
+        raise FileNotFoundError(f"Missing borrowed tuned configs:\n{sample}{suffix}")
+
+
+def load_borrowed_config(borrow_model: str, dataset: str, source: str, target: str):
+    path = Path("./__hps__/tuned") / borrow_model.lower() / dataset.lower() / f"{source}_{target}" / "best.yaml"
+    if not path.exists():
+        raise FileNotFoundError(f"Borrowed tuned config not found: {path}")
+    return load_yaml(path), str(path)
+
+
+def sanitize_model_payload(payload: dict | None) -> dict:
+    cleaned = dict(payload or {})
+    cleaned.pop("name", None)
+    cleaned.pop("tuned_params", None)
+    cleaned.pop("gnn", None)
+    return cleaned
 
 
 def build_error_result(config: dict, error: Exception, stage: str) -> dict:
@@ -247,6 +281,7 @@ def main() -> None:
     parser.add_argument("--run-id", type=str)
     parser.add_argument("--space-dir", type=str)
     parser.add_argument("--use-imported", action="store_true")
+    parser.add_argument("--borrow-model", type=str)
     args = parser.parse_args()
 
     config = load_yaml(resolve_config_path(args.config))
@@ -266,6 +301,9 @@ def main() -> None:
         raise FileNotFoundError(f"Search space path not found: {search_space_path}")
 
     use_imported = args.use_imported or as_bool(config.get("use_imported", False))
+    borrow_model = normalize_optional_text(
+        args.borrow_model or config.get("borrow_model") or config.get("borrow")
+    ) or None
     models = [m.lower() for m in models]
     transfer_pairs = list(iter_transfer_pairs(transfer_settings))
     validate_transfer_pairs(transfer_pairs)
@@ -273,6 +311,8 @@ def main() -> None:
     if use_imported:
         validate_imported_models(models)
         validate_imported_files(models, transfer_pairs)
+    if borrow_model:
+        validate_borrowed_files(borrow_model, transfer_pairs)
 
     output_dir = Path(config["output_dir"])
     run_id = (args.run_id or "").strip() or time.strftime("%m%d_%H%M%S")
@@ -318,6 +358,8 @@ def main() -> None:
                 "hp_id",
                 "use_imported",
                 "imported_config",
+                "borrow_model",
+                "borrowed_config",
                 "tuned_params",
             ]
             + hp_keys
@@ -359,7 +401,7 @@ def main() -> None:
     update_progress(progress_path, seed, process_start, completed=0, total=total_trials)
 
     for idx, (dataset, source, target, model, model_name, hp_id, hp_params, tuned_params) in enumerate(trials, start=1):
-        key = (dataset, source, target, model_name, hp_id)
+        key = (dataset, source, target, model_name, hp_id, borrow_model or "")
         if key in completed_keys:
             skipped += 1
             update_progress(progress_path, seed, process_start, completed=processed + skipped, total=total_trials)
@@ -367,10 +409,15 @@ def main() -> None:
                 print(f"[Seed {seed}] Skipping {idx}/{total_trials}: already completed")
             continue
 
-        print(f"[Seed {seed}] Running {idx}/{total_trials}: {model_name} hp_id={hp_id} on {dataset} ({source}->{target})")
+        borrow_note = f", borrow={borrow_model}" if borrow_model else ""
+        print(
+            f"[Seed {seed}] Running {idx}/{total_trials}: {model_name} hp_id={hp_id} "
+            f"on {dataset} ({source}->{target}){borrow_note}"
+        )
 
         imported_path = ""
-        merged_model_params = dict(hp_params)
+        borrowed_path = ""
+        merged_model_params = {}
         update_config = {
             "expt": {
                 "source": source,
@@ -388,8 +435,18 @@ def main() -> None:
         try:
             if use_imported:
                 imported_cfg, imported_path = load_imported_config(model=model, dataset=dataset, source=source, target=target)
-                merged_model_params = {**imported_cfg, **hp_params}
-                update_config["model"] = merged_model_params
+                merged_model_params.update(sanitize_model_payload(imported_cfg))
+            if borrow_model:
+                borrowed_cfg, borrowed_path = load_borrowed_config(
+                    borrow_model=borrow_model,
+                    dataset=dataset,
+                    source=source,
+                    target=target,
+                )
+                merged_model_params.update(sanitize_model_payload(borrowed_cfg))
+
+            merged_model_params.update(hp_params)
+            update_config["model"] = merged_model_params
 
             run_config = build_config(
                 {"data": dataset, "expt": "default", "model": model},
@@ -416,6 +473,8 @@ def main() -> None:
             "hp_id": hp_id,
             "use_imported": int(use_imported),
             "imported_config": imported_path,
+            "borrow_model": borrow_model or "",
+            "borrowed_config": borrowed_path,
             "tuned_params": "|".join(tuned_params),
         }
         for k in hp_keys:

@@ -23,6 +23,8 @@ META_COLS = {
     "config_id",
     "use_imported",
     "imported_config",
+    "borrow_model",
+    "borrowed_config",
     "tuned_params",
     "status",
     "train_time",
@@ -115,13 +117,39 @@ def _load_imported_payload(sample_row: pd.Series) -> dict:
     if candidate and str(candidate).strip():
         path = Path(str(candidate).strip())
     else:
-        path = Path("../__hps__/imported") / model / dataset / f"{source}_{target}" / "imported.yaml"
+        path = Path("./__hps__/imported") / model / dataset / f"{source}_{target}" / "imported.yaml"
 
     if not path.exists():
         raise FileNotFoundError(f"Imported config not found: {path}")
 
     with path.open("r") as f:
         return yaml.safe_load(f) or {}
+
+
+def _load_borrowed_payload(sample_row: pd.Series) -> dict:
+    borrow_model = str(sample_row.get("borrow_model", "")).strip().lower()
+    if not borrow_model:
+        return {}
+
+    dataset = str(sample_row["dataset"]).lower()
+    source = str(sample_row["source"])
+    target = str(sample_row["target"])
+
+    candidate = sample_row.get("borrowed_config")
+    if candidate and str(candidate).strip():
+        path = Path(str(candidate).strip())
+    else:
+        path = Path("./__hps__/tuned") / borrow_model / dataset / f"{source}_{target}" / "best.yaml"
+
+    if not path.exists():
+        raise FileNotFoundError(f"Borrowed tuned config not found: {path}")
+
+    with path.open("r") as f:
+        payload = yaml.safe_load(f) or {}
+    payload.pop("name", None)
+    payload.pop("tuned_params", None)
+    payload.pop("gnn", None)
+    return payload
 
 
 def _build_full_model_payload(sample_row: pd.Series, best_row: pd.Series, hp_cols: list) -> dict:
@@ -145,6 +173,12 @@ def _build_full_model_payload(sample_row: pd.Series, best_row: pd.Series, hp_col
             payload.update(_load_imported_payload(sample_row))
         except Exception as exc:
             print(f"[Warning] Failed to load imported config for {model} ({source}->{target}): {exc}")
+
+    if str(sample_row.get("borrow_model", "")).strip():
+        try:
+            payload.update(_load_borrowed_payload(sample_row))
+        except Exception as exc:
+            print(f"[Warning] Failed to load borrowed config for {model} ({source}->{target}): {exc}")
 
     for key in hp_cols:
         value = best_row.get(key)
@@ -230,6 +264,8 @@ def _build_grouped_config_metrics(df: pd.DataFrame, metrics: set, hp_cols: list)
     key_cols = ["model", "dataset", "source", "target", "hp_id"]
     if "config_id" in df.columns:
         key_cols.append("config_id")
+    if "borrow_model" in df.columns:
+        key_cols.append("borrow_model")
 
     metric_cols = sorted([col for col in metrics if col in df.columns])
     agg_dict = {col: (col, "mean") for col in metric_cols}
@@ -335,7 +371,7 @@ def main() -> None:
     )
     parser.add_argument("--metric", type=str, default="micro_f1")
     parser.add_argument("--metrics", type=str, default="micro_f1,macro_f1")
-    parser.add_argument("--output-root", type=str, default="../__hps__/tuned")
+    parser.add_argument("--output-root", type=str, default="./__hps__/tuned")
     parser.add_argument("--time-id", type=str, default="")
     parser.add_argument(
         "--benchmark-dir",

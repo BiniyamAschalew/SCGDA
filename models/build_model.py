@@ -26,6 +26,7 @@ from models.ours.filtada.filtada import FiltADA
 from models.ours.adaf.adaf import ADAF
 from models.ours.adgfn.adgfn import ADGFN
 from models.ours.dgf.dgf import DGF
+from models.ours.fan.fan import FAN
 
 # Imported models from pygda
 from models.imported.a2gnn.a2gnn import A2GNN as A2GNN_imported
@@ -76,6 +77,7 @@ def build_model(config: dict, from_pygda: bool = False):
         "filtada": FiltADA,
         "adaf": ADAF,
         "adgfn": ADGFN,
+        "fan": FAN,
         # "simgda_role": SimGDARole,
         # "simgda_cheb": SimGDACheb,
         "test": Test,
