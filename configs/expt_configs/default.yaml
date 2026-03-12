@@ -5,7 +5,7 @@ id: 0
 
 verbose: 1
 save_model: True
-model_path: "./../__saved__/models"
+model_path: "./__saved__/models"
 tuned_config_path: "./hps/tuned"
 
 

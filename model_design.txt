@@ -1,0 +1,179 @@
+OPAL Model Design (Current Implementation)
+==========================================
+
+Goal
+----
+Learn domain-transferable node representations by combining:
+1) supervised source classification,
+2) feature-level distribution alignment,
+3) filter/operator-level alignment using Gaussian probes,
+4) semantic alignment (class compactness + class relation matching),
+5) optional adversarially learnable probe distribution.
+
+
+High-Level Diagram
+------------------
+
+Source Graph (Xs, As, Ys)                         Target Graph (Xt, At)
+        |                                                   |
+        |                                                   |
+        +----------- shared OPALBase encoder/classifier ----+
+                            (domain-specific filter params)
+                                s_params       t_params
+                                   |              |
+                                   v              v
+                          Fs = Encoder(Xs, As, s) Ft = Encoder(Xt, At, t)
+                                   |              |
+                                   v              v
+                              logits_s         logits_t
+                                   |
+                            L_cls (source CE)
+
+Feature Alignment Branch
+------------------------
+Fs ------------------------------\
+                                  >  L_feat = Dist(Fs, Ft)
+Ft ------------------------------/
+
+Probe Alignment Branch (Operator Regularization)
+-------------------------------------------------
+Probe generator Gz
+- if learnable_probe = False:
+    z ~ N(mu_batch, sigma_batch) from concat(Fs, Ft) stats
+- if learnable_probe = True:
+    z ~ N(mu_theta, sigma_theta) with learnable per-dim params
+
+zs = Gz(|Vs|),  zt = Gz(|Vt|)
+Vs = P(As; s_params) zs          Vt = P(At; t_params) zt
+
+Vs ------------------------------\
+                                  >  L_probe_align = Dist(Vs, Vt)
+Vt ------------------------------/
+
+Semantic + Structure Regularizers on Probe Responses
+-----------------------------------------------------
+- L_sem_intra_source: class compactness in Vs using Ys
+- L_sem_intra_target: class compactness in Vt using pseudo labels from logits_t
+- L_sem_cross: source/target class-prototype matching + prototype-correlation matching
+- L_struct: |DirichletEnergy(Vs, As) - DirichletEnergy(Vt, At)|
+- L_filter_reg: order-weighted L1 on filter coefficients (optional)
+
+Combined probe-branch loss:
+L_filter = L_probe_align
+         + gamma * (L_sem_intra_source + L_sem_intra_target + L_sem_cross)
+         + delta * L_struct
+         + filter_reg_weight * L_filter_reg
+
+
+Training Objective (Main Min Step)
+----------------------------------
+L_total = L_cls
+        + alpha * L_feat
+        + beta  * L_filter
+
+Updated in main optimizer:
+- OPALBase parameters
+- s_params, t_params
+
+
+Optional Adversarial Probe Learning (Max Step)
+-----------------------------------------------
+Enabled only when learnable_probe = True.
+
+Probe objective:
+J_probe = Dist(P(As; s_params_detached) z_s,
+               P(At; t_params_detached) z_t)
+          - probe_reg_weight * (||mu_theta||^2 + ||log_std_theta||^2)
+
+Optimization step:
+- maximize J_probe w.r.t. probe generator params only
+- implemented as minimizing (-J_probe)
+- done probe_adv_steps times per batch before main min step
+
+This creates a min-max dynamic:
+- Probe generator tries to find harder probe distributions (maximize operator gap)
+- Main model/filter learns to reduce downstream total loss including probe alignment
+
+
+Component Inventory
+-------------------
+1) OPALBase
+- GNN backbone + classifier
+- consumes domain-specific filter params in forward path
+
+2) Learnable filter coefficients
+- s_params: source-side polynomial filter coefficients
+- t_params: target-side polynomial filter coefficients
+- optional non-negativity clamp
+
+3) Divergence metric abstraction
+- Dist = MMD or Sinkhorn
+- sampled computation for GPU stability
+
+4) Probe propagator
+- MonoProp applies polynomial operator per domain graph
+
+5) Semantic module
+- intra-class compactness (source labels + confident target pseudo labels)
+- cross-domain prototype matching
+- cross-domain class-correlation matching
+
+6) Structure module
+- edge-wise Dirichlet energy alignment between probe responses
+
+7) Optional learnable Gaussian probe generator
+- parameters: mean[1, probe_dim], log_std[1, probe_dim]
+- regularized during adversarial max step
+
+
+Dataflow Summary (Per Batch)
+----------------------------
+Step A: (optional) adversarial probe update
+- sample probes from learnable Gaussian
+- maximize projection distance after source/target operators
+
+Step B: main OPAL update
+- compute source CE loss
+- compute feature distribution alignment
+- compute probe/operator alignment + semantic + structure regularization
+- combine weighted losses and optimize model + filters
+
+
+Primary Config Knobs
+--------------------
+Core weights:
+- alpha: feature alignment weight
+- beta: probe/filter alignment weight
+- gamma: semantic weight inside probe branch
+- delta: structure weight inside probe branch
+
+Probe learning:
+- learnable_probe
+- probe_adv_steps, probe_adv_lr, probe_adv_weight_decay
+- probe_reg_weight
+
+Distance:
+- distance = mmd | sinkhorn
+- distance_sampling_num, distance_times
+- sinkhorn_* params when sinkhorn is used
+
+Semantic controls:
+- prob_semantic
+- pseudo_label_threshold, pseudo_label_temperature
+- semantic_sample_per_class
+- corr_weight
+
+Filter controls:
+- K
+- filter_nonneg
+- filter_reg, filter_reg_weight
+
+
+Interpretation
+--------------
+OPAL learns domain-specific graph operators (s_params, t_params) that are:
+- useful for source supervision,
+- distributionally aligned in feature space,
+- regularized at operator level using shared Gaussian probes,
+- semantically structured (same classes align),
+- and optionally stress-tested by an adversarially learned probe distribution.

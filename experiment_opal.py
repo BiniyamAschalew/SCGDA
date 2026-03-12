@@ -10,6 +10,7 @@ import pandas as pd
 BASELINES = {"gnn", "dane", "simgda", 
              "grade", "a2gnn", "strurw", 
              "dgsda", "specreg", "kbl", "pairalign"}
+IMPORTED_MODELS = {"a2gnn", "adagcn", "dgsda", "specreg", "kbl", "pairalign"}
 MODELS = {
     0:"gnn",   1: "dane",
     2:"simgda",   3:"grade",
@@ -20,10 +21,12 @@ MODELS = {
     13:"acdne", 14:"asn", 15:"adagcn",
     16:"dlit", 17:"simgda_cheb",
     18:"scgda", 19:"test",
-    20:"bdlite", 21:"kbl", 22:"pairalign",
-    23:"simgda_filter", 24:"filtada",
-    25:"fda", 26:"adaf", 27:"adgfn",
-    28:"dgf", 29:"fan",
+    20:"bdlite",
+    21:"kbl", 22:"pairalign",
+    23:"simgda_filter",
+    24:"filtada", 25:"simfil", 
+    26: "fdarw", 27:"fda",
+    28:"vda", 29:"anggda",
     30:"opal"
     }
 
@@ -43,25 +46,29 @@ REPEATS = 1
 role_type = ROLE_TYPES[2]
 
 SEED = 2025
-# EPOCHS = 200
-DEVICE = "cuda:7"
+# EPOCHS = 100
+DEVICE = "cuda:5"
 
-USE_TUNED = 0
-
-notes = "no_entropy_loss"
 BORROW = None
-# BORROW = "dgsda"
-# BORROW = "adagcn"
+USE_TUNED = 0
+DIVERGENCE = "mmd" # "sinkhorn" or "sinkhorn"
+
+# PROP_BASE = "bern"
+# PROP_BASE = "cheb"
+
+# BORROW = "a2gnn"
+# BORROW = "AdaGCN"
 
 USE_DEFAULT = False
 WANDB = False
 FROM_PYGDA = False
+REWEIGHT_WEIGHT = 0.1
 
 id = {
     "model": [30],
-    "dataset": [1],
-    "source": [0],
-    "target": [1],
+    "dataset": [1, 0, 2],
+    "source": [1],
+    "target": [0],
 }
 
 combined_df = pd.DataFrame()
@@ -115,20 +122,29 @@ for repeat in range(REPEATS):
                         {
                             "adv": False,
                             "role_type": role_type,
+                            "reweight_loss_weight": REWEIGHT_WEIGHT,
+                            "divergence": DIVERGENCE,
                             # "epochs": EPOCHS,
+                            # "prop_base": PROP_BASE
                         },
                         
                     }
 
-                    config = build_config(config_setup, update_config, borrow=BORROW,
+                    borrow_model = "adagcn" if model == "vda" else BORROW
+                    config = build_config(config_setup, update_config, borrow=borrow_model,
                                           use_tuned=USE_TUNED, use_default=USE_DEFAULT)
-                    result = run(config, from_pygda=FROM_PYGDA)
+                    run_from_pygda = FROM_PYGDA and model in IMPORTED_MODELS
+                    result = run(config, from_pygda=run_from_pygda)
 
-                    result["repeat"] = repeat
+                    # result["rw_weight"] = REWEIGHT_WEIGHT
+                    result["divergence"] = config["model"]["divergence"]
                     result["source"] = source
                     result["target"] = target
-                    result["cur_time"] = time.strftime("%d%H%M")
                     result["use_tuned"] = USE_TUNED
+                    result["repeat"] = repeat
+                    # result["cur_time"] = time.strftime("%d%H%M")
+
+
 
                     model_name = model[:]
                     if "role" in model_name:
@@ -142,9 +158,8 @@ for repeat in range(REPEATS):
                                             ignore_index=True)
 
 
-notes += f"{dataset}_{model}"
+notes = f"{dataset}_{model}"
 result_dir = f"./__saved__/results/evaluation/{cur_time}_{notes}.csv"
-os.makedirs(os.path.dirname(result_dir), exist_ok=True)
 if os.path.exists(result_dir):
     result_dir = to_valid_dir(result_dir)
 

@@ -10,89 +10,82 @@ import pandas as pd
 BASELINES = {"gnn", "dane", "simgda", 
              "grade", "a2gnn", "strurw", 
              "dgsda", "specreg", "kbl", "pairalign"}
-MODELS = {
-    0:"gnn",   1: "dane",
-    2:"simgda",   3:"grade",
-    4:"a2gnn",   5:"strurw",
-    6:"dgsda",   7:"specreg",
-    8:"simgda_role", 9:"simgda_spectral",
-    10:"structalign2", 11:"mlp", 12:"simmlp",
-    13:"acdne", 14:"asn", 15:"adagcn",
-    16:"dlit", 17:"simgda_cheb",
-    18:"scgda", 19:"test",
-    20:"bdlite", 21:"kbl", 22:"pairalign",
-    23:"simgda_filter", 24:"filtada",
-    25:"fda", 26:"adaf", 27:"adgfn",
-    28:"dgf", 29:"fan",
-    30:"opal"
-    }
 
 
-DATASETS = {
-    0:"citation", 1:"blog", 
-    2:"airport", 3:"twitch", 4:"mag"
-    }
+# MODELS = {0:"A2GNN", 1:"ADAGCN", 2:"DANE", 3:"DGSDA",
+#           4:"GRADE", 5:"JHGDA", 6:"KBL",
+#           7:"PAIRALIGN", 8:"SPECREG", 9:"STRURW",
+#           10:"TDSS", 11:"UDAGCN",
+#           }
+
+MODELS = [
+    "KBL", "DANE", "GRADE", "A2GNN", "TDSS",
+    "A2GNN", "ADAGCN", "DGSDA", "SPECREG", "KBL", "PAIRALIGN",
+    "JHGDA","STRURW", ]
 
 
-ROLE_TYPES = {
-    0:"random_role", 1:"graphwave", 
-    2:"signal_role"
-    }
+TRANSFER_SCENARIOS = {
+    "airport": [
+        ("USA", "EUROPE"), ("USA", "BRAZIL"),
+        # ("EUROPE", "USA"), ("EUROPE", "BRAZIL"),
+        # ("BRAZIL", "USA"), ("BRAZIL", "EUROPE"),
+    ],
+    "blog": [
+        ("Blog1", "Blog2"), ("Blog2", "Blog1"),
+    ],
+    "citation": [
+        ("Citationv1", "ACMv9"), ("Citationv1", "DBLPv7"),
+        # ("DBLPv7", "ACMv9"), ("DBLPv7", "Citationv1"),
+        # ("ACMv9", "Citationv1"), ("ACMv9", "DBLPv7"),
+    ],
+    "twitch": [
+        ("EN", "DE"), ("DE", "EN"),
+    ],
+}
+
+
+# DATASETS = {
+#     0:"citation", 1:"blog", 
+#     2:"airport", 3:"twitch", 4:"mag"
+#     }
+
+
+# ROLE_TYPES = {
+#     0:"random_role", 1:"graphwave", 
+#     2:"signal_role"
+#     }
 
 REPEATS = 1
-role_type = ROLE_TYPES[2]
+# role_type = ROLE_TYPES[2]
 
-SEED = 2025
-# EPOCHS = 200
-DEVICE = "cuda:7"
+SEED = 0
+EPOCHS = 3
+DEVICE = "cuda:6"
 
-USE_TUNED = 0
+USE_TUNED = 1
 
-notes = "no_entropy_loss"
 BORROW = None
 # BORROW = "dgsda"
 # BORROW = "adagcn"
 
 USE_DEFAULT = False
 WANDB = False
-FROM_PYGDA = False
+FROM_PYGDA = True
 
-id = {
-    "model": [30],
-    "dataset": [1],
-    "source": [0],
-    "target": [1],
-}
+# id = {
+#     "model": [0,1,2,3,4,5,6,7,8,9,10,11],
+#     "dataset": [0,1],
+#     "source": [0],
+#     "target": [1],
+# }
 
 combined_df = pd.DataFrame()
 cur_time = time.strftime("%m%d%H%M%S")
 
 for repeat in range(REPEATS):
-    for mid in id["model"]:
-        for did in id["dataset"]:
-
-            model = MODELS[mid][:]
-
-            dataset = DATASETS[did]
-
-            data_config = load_config(f"./configs/data_configs/{dataset}.yaml")
-            domains = data_config["domains"]
-
-            src_ids = range(len(domains)) if len(id["source"]) == 0 else id["source"]
-            tgt_ids = range(len(domains)) if len(id["target"]) == 0 else id["target"]
-
-            for sid in src_ids:
-                for tid in tgt_ids:
-                    
-                    # exclude same source and target
-                    if sid == tid:
-                        continue
-
-                    if len(domains) <= max(sid, tid):
-                        raise ValueError(f"selected domain id {sid} or {tid} exceeds available domains: len={len(domains)}")
-
-                    source = domains[sid]
-                    target = domains[tid]
+    for model in MODELS:
+        for dataset in TRANSFER_SCENARIOS:
+            for source, target in TRANSFER_SCENARIOS[dataset]:
 
                     config_setup = {
                         "data": dataset,
@@ -111,13 +104,9 @@ for repeat in range(REPEATS):
                             "wandb_enabled": WANDB,
                             "project": "SCGDA",
                         },
-                        "model":
-                        {
-                            "adv": False,
-                            "role_type": role_type,
-                            # "epochs": EPOCHS,
-                        },
-                        
+                        "model":{
+                            "epochs": EPOCHS,
+                        }
                     }
 
                     config = build_config(config_setup, update_config, borrow=BORROW,
@@ -142,7 +131,7 @@ for repeat in range(REPEATS):
                                             ignore_index=True)
 
 
-notes += f"{dataset}_{model}"
+notes = f"{dataset}_{model}"
 result_dir = f"./__saved__/results/evaluation/{cur_time}_{notes}.csv"
 os.makedirs(os.path.dirname(result_dir), exist_ok=True)
 if os.path.exists(result_dir):

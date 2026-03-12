@@ -11,6 +11,8 @@ from typing import Dict, Iterator, Tuple
 import pandas as pd
 import yaml
 
+SUPPORTED_IMPORTED_MODELS = {"a2gnn", "adagcn", "dgsda", "specreg", "kbl", "pairalign"}
+
 
 def parse_args():
     parser = argparse.ArgumentParser()
@@ -51,6 +53,14 @@ def load_yaml(path: str) -> dict:
         return yaml.safe_load(f)
 
 
+def as_bool(value) -> bool:
+    if isinstance(value, bool):
+        return value
+    if value is None:
+        return False
+    return str(value).strip().lower() in {"1", "true", "yes", "y", "on"}
+
+
 def iter_transfer_pairs(transfer_settings: dict) -> Iterator[Tuple[str, str, str]]:
     for dataset, settings in transfer_settings.items():
         if not isinstance(settings, dict):
@@ -63,6 +73,24 @@ def iter_transfer_pairs(transfer_settings: dict) -> Iterator[Tuple[str, str, str
                     yield dataset, source, target
             else:
                 yield dataset, source, targets
+
+
+def validate_transfer_pairs(pairs) -> None:
+    invalid = [(dataset, source, target) for dataset, source, target in pairs if source == target]
+    if not invalid:
+        return
+    sample = ", ".join([f"{dataset}:{source}->{target}" for dataset, source, target in invalid[:5]])
+    raise ValueError(f"source==target is not allowed in transfer settings. Examples: {sample}")
+
+
+def validate_imported_models(models) -> None:
+    missing = [model for model in models if model.lower() not in SUPPORTED_IMPORTED_MODELS]
+    if not missing:
+        return
+    raise ValueError(
+        f"use_pygda/use_imported only supports {sorted(SUPPORTED_IMPORTED_MODELS)}, "
+        f"but got unsupported models: {missing}"
+    )
 
 
 def parse_model_spec(raw_spec):
@@ -243,6 +271,7 @@ def run_seed_benchmark(seed: int, config: dict, save_dir: str):
 
     model_specs = normalize_model_specs(config["model_hps"])
     transfer_pairs = list(iter_transfer_pairs(config["transfer_settings"]))
+    validate_transfer_pairs(transfer_pairs)
 
     device = config["device"]
     wandb_enabled = bool(config.get("wandb", False))
@@ -251,9 +280,20 @@ def run_seed_benchmark(seed: int, config: dict, save_dir: str):
     note = config["bench_note"]
     default_epochs = int(config.get("epochs", 200))
     wandb_project = config.get("wandb_project", "SCGDA_Benchmark")
+    use_imported = as_bool(config.get("use_imported"))
+    if not use_imported:
+        use_imported = as_bool(config.get("use_pygda"))
+
+    if use_imported:
+        validate_imported_models(model_specs.keys())
+
+    implementation = "pygda" if use_imported else "local"
 
     result_dir = os.path.join(save_dir, f"benchmark_{note}_seed{seed}.csv")
-    print(f"[Seed {seed}] Starting benchmark, saving to: {result_dir}")
+    print(
+        f"[Seed {seed}] Starting benchmark (implementation={implementation}), "
+        f"saving to: {result_dir}"
+    )
 
     combined_df = pd.DataFrame()
 
@@ -266,7 +306,8 @@ def run_seed_benchmark(seed: int, config: dict, save_dir: str):
             print(
                 f"[Seed {seed}] Running {current_exp}/{total_experiments}: "
                 f"{model} on {dataset} ({source}->{target}) "
-                f"[use_tuned={spec['use_tuned']}, borrow={spec['borrow']}]"
+                f"[implementation={implementation}, use_tuned={spec['use_tuned']}, "
+                f"borrow={spec['borrow']}]"
             )
 
             config_setup = {
@@ -296,7 +337,7 @@ def run_seed_benchmark(seed: int, config: dict, save_dir: str):
                     borrow=spec["borrow"],
                     use_tuned=spec["use_tuned"],
                 )
-                result = run(run_config)
+                result = run(run_config, from_pygda=use_imported)
             except Exception as error:
                 print(
                     f"[Seed {seed}] ERROR in {model} on {dataset} ({source}->{target}): {error}"

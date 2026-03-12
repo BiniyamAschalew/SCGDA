@@ -71,3 +71,16 @@ class BernProp(MessagePassing):
 
         return '{}(K={}, temp={})'.format(self.__class__.__name__, self.K, self.temp)
 
+    def _to_polynomial_lambda(self):
+        """Convert Bernstein coefficients to monomial coefficients in λ."""
+        K = self.K
+        theta = F.relu(self.temp)
+        coefs = torch.zeros(K + 1, device=theta.device, dtype=theta.dtype)
+
+        for p in range(K + 1):
+            s = 0.0
+            for k in range(p + 1):
+                s = s + theta[k] * comb(p, k) * ((-1) ** (p - k))
+            coefs[p] = (comb(K, p) / (2 ** p)) * s
+
+        return coefs

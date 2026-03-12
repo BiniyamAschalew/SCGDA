@@ -27,15 +27,21 @@ from models.ours.adaf.adaf import ADAF
 from models.ours.adgfn.adgfn import ADGFN
 from models.ours.dgf.dgf import DGF
 from models.ours.fan.fan import FAN
+from models.ours.opal.opal import OPAL
 
 # Imported models from pygda
 from models.imported.a2gnn.a2gnn import A2GNN as A2GNN_imported
 from models.imported.adagcn.adagcn import AdaGCN as AdaGCN_imported
+from models.imported.dane.dane import DANE as DANE_imported
 from models.imported.dgsda.dgsda import DGSDA as DGSDA_imported
-from models.imported.specreg.specreg import SpecReg as SpecReg_imported
+from models.imported.grade.grade import GRADE as GRADE_imported
+from models.imported.jhgda.jhgda import JHGDA as JHGDA_imported
 from models.imported.kbl.kbl import KBL as KBL_imported
 from models.imported.pairalign.pairalign import PairAlign as PairAlign_imported
-
+from models.imported.specreg.specreg import SpecReg as SpecReg_imported
+from models.imported.strurw.strurw import StruRW as StruRW_imported
+from models.imported.tdss.tdss import TDSS as TDSS_imported
+from models.imported.udagcn.udagcn import UDAGCN as UDAGCN_imported
 
 from utils.expt_utils import print_string
 
@@ -51,6 +57,12 @@ def build_model(config: dict, from_pygda: bool = False):
         "specreg": SpecReg_imported,
         "kbl": KBL_imported,
         "pairalign": PairAlign_imported,
+        "dane": DANE_imported,
+        "grade": GRADE_imported,
+        "strurw": StruRW_imported,
+        "jhgda": JHGDA_imported,
+        "tdss": TDSS_imported,
+        "udagcn": UDAGCN_imported,
     }
 
     models_dict = {
@@ -78,6 +90,7 @@ def build_model(config: dict, from_pygda: bool = False):
         "adaf": ADAF,
         "adgfn": ADGFN,
         "fan": FAN,
+        "opal": OPAL,
         # "simgda_role": SimGDARole,
         # "simgda_cheb": SimGDACheb,
         "test": Test,

@@ -3,18 +3,29 @@
 import argparse
 import csv
 import fcntl
+import random
 import time
 from itertools import product
 from pathlib import Path
 
 import yaml
 
-from run import run
-from utils.config_utils import build_config
-
 
 PROGRESS_FIELDS = ["seed", "start_time", "completed", "total"]
-SUPPORTED_IMPORTED_MODELS = {"a2gnn", "adagcn", "dgsda", "specreg", "kbl", "pairalign"}
+SUPPORTED_IMPORTED_MODELS = {
+    "a2gnn",
+    "adagcn",
+    "dane",
+    "dgsda",
+    "grade",
+    "jhgda",
+    "kbl",
+    "pairalign",
+    "specreg",
+    "strurw",
+    "tdss",
+    "udagcn",
+}
 CUDA_MEM_FIELDS = [
     "cuda_device_index",
     "cuda_allocated_mb",
@@ -31,6 +42,20 @@ def resolve_config_path(config_value: str) -> Path:
     if not path.exists():
         raise FileNotFoundError(f"Config file not found: {path}")
     return path
+
+
+def resolve_existing_path(path_value: str, base_dir: Path | None = None) -> Path:
+    raw = Path(str(path_value).strip())
+    candidates = [raw]
+    if base_dir is not None:
+        candidates.append(base_dir / raw)
+
+    for candidate in candidates:
+        if candidate.exists():
+            return candidate
+
+    rendered = ", ".join(str(p) for p in candidates)
+    raise FileNotFoundError(f"Path not found. Tried: {rendered}")
 
 
 def load_yaml(path: Path) -> dict:
@@ -68,15 +93,8 @@ def build_combos(space: dict, max_combos: int):
 
     selected = None
     if max_combos and max_combos < total:
-        selected = {
-            min(total - 1, int((i + 0.5) * total / max_combos))
-            for i in range(max_combos)
-        }
-        if len(selected) < max_combos:
-            for idx in range(total):
-                selected.add(idx)
-                if len(selected) == max_combos:
-                    break
+        rng = random.Random(0)
+        selected = set(rng.sample(range(total), max_combos))
 
     combos = []
     for idx, combo in enumerate(product(*values)):
@@ -281,10 +299,13 @@ def main() -> None:
     parser.add_argument("--run-id", type=str)
     parser.add_argument("--space-dir", type=str)
     parser.add_argument("--use-imported", action="store_true")
+    parser.add_argument("--from-pygda", action="store_true")
     parser.add_argument("--borrow-model", type=str)
+    parser.add_argument("--dry-run", action="store_true")
     args = parser.parse_args()
 
-    config = load_yaml(resolve_config_path(args.config))
+    config_path = resolve_config_path(args.config)
+    config = load_yaml(config_path)
     seed = args.seed if args.seed is not None else int(config.get("seed", 200))
     models = config.get("models") or []
     transfer_settings = config.get("transfer_settings") or {}
@@ -296,11 +317,10 @@ def main() -> None:
     search_space_value = args.space_dir or config.get("search_space_dir") or config.get("search_space")
     if not search_space_value:
         raise ValueError("Search space path is required (--space-dir or config.search_space_dir)")
-    search_space_path = Path(str(search_space_value).strip())
-    if not search_space_path.exists():
-        raise FileNotFoundError(f"Search space path not found: {search_space_path}")
+    search_space_path = resolve_existing_path(str(search_space_value), base_dir=config_path.parent)
 
     use_imported = args.use_imported or as_bool(config.get("use_imported", False))
+    from_pygda = args.from_pygda or as_bool(config.get("from_pygda", False))
     borrow_model = normalize_optional_text(
         args.borrow_model or config.get("borrow_model") or config.get("borrow")
     ) or None
@@ -308,8 +328,9 @@ def main() -> None:
     transfer_pairs = list(iter_transfer_pairs(transfer_settings))
     validate_transfer_pairs(transfer_pairs)
 
-    if use_imported:
+    if from_pygda:
         validate_imported_models(models)
+    if use_imported:
         validate_imported_files(models, transfer_pairs)
     if borrow_model:
         validate_borrowed_files(borrow_model, transfer_pairs)
@@ -357,6 +378,7 @@ def main() -> None:
                 "config_id",
                 "hp_id",
                 "use_imported",
+                "from_pygda",
                 "imported_config",
                 "borrow_model",
                 "borrowed_config",
@@ -393,6 +415,20 @@ def main() -> None:
 
     if skipped_invalid:
         print(f"[Seed {seed}] Skipped {skipped_invalid} invalid model/HP combinations")
+
+    if not trials:
+        raise ValueError("No valid trials generated. Check models, transfer_settings, and search space.")
+
+    if args.dry_run:
+        print(
+            f"[Seed {seed}] Dry run OK: total_trials={len(trials)}, models={len(models)}, "
+            f"pairs={len(transfer_pairs)}, use_imported={int(use_imported)}, "
+            f"from_pygda={int(from_pygda)}, borrow_model={borrow_model or ''}"
+        )
+        return
+
+    from run import run as run_experiment
+    from utils.config_utils import build_config
 
     process_start = time.strftime("%Y-%m-%d %H:%M:%S")
     processed = 0
@@ -452,7 +488,7 @@ def main() -> None:
                 {"data": dataset, "expt": "default", "model": model},
                 update_config,
             )
-            result = run(run_config, from_pygda=use_imported)
+            result = run_experiment(run_config, from_pygda=from_pygda)
         except Exception as exc:
             result = build_error_result(
                 {"expt": update_config["expt"], "model": {"name": model_name}},
@@ -472,6 +508,7 @@ def main() -> None:
             "config_id": hp_id,
             "hp_id": hp_id,
             "use_imported": int(use_imported),
+            "from_pygda": int(from_pygda),
             "imported_config": imported_path,
             "borrow_model": borrow_model or "",
             "borrowed_config": borrowed_path,

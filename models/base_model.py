@@ -25,6 +25,7 @@ class BaseGDA(ABC):
 
         self.gnn_type = config["model"]["gnn"]
         self.dropout = config["model"]["dropout_ratio"]
+        self.dropout_ratio = config["model"]["dropout_ratio"] # override for imported models that expect dropout_ratio instead of dropout
         self.weight_decay = config["model"]["weight_decay"]
         self.lr = config["model"]["lr"]
         self.batch_size = config["model"]["batch_size"]

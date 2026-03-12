@@ -31,6 +31,8 @@ class SimGDAFilterBase(nn.Module):
         self.k = int(config["model"].get("K", 4))
         self.cls_pnums = int(config["model"].get("cls_pnums", 1))
 
+        self.filter_class = FilterGCNConv
+
         self.convs = nn.ModuleList()
         self.convs.append(self._build_conv(self.in_dim, self.hid_dim))
         for _ in range(self.num_layers - 1):
@@ -52,7 +54,7 @@ class SimGDAFilterBase(nn.Module):
                 filter_type = "mono"
             else:
                 filter_type = self.gnn_type.split("_", 1)[1]
-            return FilterGCNConv(
+            return self.filter_class(
                 in_dim,
                 out_dim,
                 filter_type=filter_type,
@@ -107,7 +109,16 @@ class SimGDAFilterBase(nn.Module):
 
         return x
 
-    def domain_classifier(self, x, alpha):
-        x = GradReverse.apply(x, alpha)
-        d_logit = self.domain_discriminator(x)
-        return d_logit
+    def apply_filter(self, x, edge_index, filter_param=None, params=None):
+        if filter_param is None:
+            filter_param = params
+        filter_param = self._to_filter_param(filter_param, x)
+        conv = self.convs[0]
+        x = conv._mono_forward(x, edge_index, edge_weight=None, params=filter_param)
+
+        return x
+
+    # def domain_classifier(self, x, alpha):
+    #     x = GradReverse.apply(x, alpha)
+    #     d_logit = self.domain_discriminator(x)
+    #     return d_logit

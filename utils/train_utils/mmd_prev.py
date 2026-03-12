@@ -1,35 +1,20 @@
 import torch
 import numpy as np
 
-from utils.train_utils.sinkhorn import Sinkhorn
+from geomloss import SamplesLoss
+
 
 def guassian_kernel(source, target, kernel_mul=2.0, kernel_num=5, fix_sigma=None):
-    source = torch.as_tensor(source)
-    target = torch.as_tensor(target)
-    n_samples = int(source.size(0)) + int(target.size(0))
-    total = torch.cat([source, target], dim=0)
-    total = torch.nan_to_num(total, nan=0.0, posinf=0.0, neginf=0.0)
-    L2_distance = torch.cdist(total, total, p=2).pow(2)
-    finite_distance = torch.isfinite(L2_distance)
-    if finite_distance.any():
-        finite_max = torch.max(L2_distance[finite_distance]) if finite_distance.any() else torch.tensor(0.0, device=L2_distance.device)
-        if finite_max.item() > 0:
-            L2_distance = torch.where(finite_distance, L2_distance, finite_max)
-    else:
-        L2_distance = torch.zeros_like(L2_distance)
-    if fix_sigma is not None:
-        bandwidth = torch.as_tensor(fix_sigma, device=L2_distance.device, dtype=L2_distance.dtype)
-    else:
-        bandwidth = (torch.sum(L2_distance) + 1e-6) / (n_samples**2 - n_samples)
 
-    bandwidth = torch.nan_to_num(
-        bandwidth,
-        nan=1.0,
-        posinf=1.0,
-        neginf=1.0,
-    )
-    if bandwidth.item() <= 0:
-        bandwidth = torch.tensor(1.0, device=L2_distance.device, dtype=L2_distance.dtype)
+    n_samples = int(source.size()[0]) + int(target.size()[0])
+    total = torch.cat([source, target], dim=0)
+    total0 = total.unsqueeze(0).expand(int(total.size(0)), int(total.size(0)), int(total.size(1)))
+    total1 = total.unsqueeze(1).expand(int(total.size(0)), int(total.size(0)), int(total.size(1)))
+    L2_distance = ((total0-total1)**2).sum(2)
+    if fix_sigma:
+        bandwidth = fix_sigma
+    else:
+        bandwidth = (torch.sum(L2_distance.data) + 1e-6) / (n_samples**2-n_samples)
     bandwidth /= kernel_mul ** (kernel_num // 2)
     bandwidth_list = [bandwidth * (kernel_mul**i) for i in range(kernel_num)]
     kernel_val = [torch.exp(-L2_distance / bandwidth_temp) for bandwidth_temp in bandwidth_list]
@@ -38,21 +23,14 @@ def guassian_kernel(source, target, kernel_mul=2.0, kernel_num=5, fix_sigma=None
 
 
 def get_MMD(source_feat, target_feat, kernel_mul=2.0, kernel_num=5, fix_sigma=None):
-    source_num = source_feat.size(0)
-    target_num = target_feat.size(0)
-
-    if source_num == 0 or target_num == 0:
-        return torch.tensor(0.0, device=source_feat.device, dtype=source_feat.dtype)
-
+    
     kernels = guassian_kernel(source_feat, 
                               target_feat,
                               kernel_mul=kernel_mul, 
                               kernel_num=kernel_num,
                               fix_sigma=fix_sigma)
     
-    batch_size = min(int(source_num), int(target_num))
-    if batch_size == 0:
-        return torch.tensor(0.0, device=source_feat.device, dtype=source_feat.dtype)
+    batch_size = min(int(source_feat.size()[0]), int(target_feat.size()[0]))  
     
     XX = kernels[:batch_size, :batch_size]
     YY = kernels[batch_size:, batch_size:]
@@ -67,19 +45,70 @@ def MMD(source_feat, target_feat, sampling_num=1000, times=5):
     source_num = source_feat.size(0)
     target_num = target_feat.size(0)
 
-    source_num = int(source_num)
-    target_num = int(target_num)
-    sampling_num = int(sampling_num)
-    times = int(times)
+    source_sample = torch.randint(source_num, (times, sampling_num))
+    target_sample = torch.randint(target_num, (times, sampling_num))
 
-    if source_num == 0 or target_num == 0 or sampling_num <= 0 or times <= 0:
-        return torch.tensor(
-            0.0,
-            device=source_feat.device,
-            dtype=source_feat.dtype,
+    mmd = 0
+    for i in range(times):
+        source_sample_feat = source_feat[source_sample[i]]
+        target_sample_feat = target_feat[target_sample[i]]
+
+        mmd = mmd + get_MMD(source_sample_feat, target_sample_feat)
+
+    mmd = mmd / times
+    return mmd
+
+
+def get_Sinkhorn(
+    source_feat,
+    target_feat,
+    blur=0.05,
+    p=2,
+    scaling=0.9,
+    debias=True,
+    backend="auto",
+):
+    if SamplesLoss is None:
+        raise ImportError(
+            "geomloss is required for Sinkhorn loss. Install it with `pip install geomloss`."
         )
 
-    sampling_num = min(sampling_num, source_num, target_num)
+    sinkhorn_loss = SamplesLoss(
+        "sinkhorn",
+        p=p,
+        blur=blur,
+        scaling=scaling,
+        debias=debias,
+        backend=backend,
+    )
+    return sinkhorn_loss(source_feat, target_feat)
+
+
+def Sinkhorn(
+    source_feat,
+    target_feat,
+    sampling_num=1000,
+    times=5,
+    blur=0.05,
+    p=2,
+    scaling=0.9,
+    debias=True,
+    backend="auto",
+):
+    if times <= 0:
+        raise ValueError(f"`times` must be > 0, got {times}.")
+    if sampling_num <= 0:
+        raise ValueError(f"`sampling_num` must be > 0, got {sampling_num}.")
+
+    source_num = source_feat.size(0)
+    target_num = target_feat.size(0)
+    if source_num == 0 or target_num == 0:
+        raise ValueError("`source_feat` and `target_feat` must be non-empty.")
+
+    if SamplesLoss is None:
+        raise ImportError(
+            "geomloss is required for Sinkhorn loss. Install it with `pip install geomloss`."
+        )
 
     source_sample = torch.randint(
         source_num,
@@ -92,15 +121,24 @@ def MMD(source_feat, target_feat, sampling_num=1000, times=5):
         device=target_feat.device,
     )
 
-    mmd = 0
+    sinkhorn_loss = SamplesLoss(
+        "sinkhorn",
+        p=p,
+        blur=blur,
+        scaling=scaling,
+        debias=debias,
+        backend=backend,
+    )
+
+    sinkhorn = source_feat.new_tensor(0.0)
     for i in range(times):
         source_sample_feat = source_feat[source_sample[i]]
         target_sample_feat = target_feat[target_sample[i]]
 
-        mmd = mmd + get_MMD(source_sample_feat, target_sample_feat)
+        sinkhorn = sinkhorn + sinkhorn_loss(source_sample_feat, target_sample_feat)
 
-    mmd = mmd / times
-    return mmd
+    sinkhorn = sinkhorn / times
+    return sinkhorn
 
 
 def mmd_kernel(

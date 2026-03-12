@@ -1,4 +1,6 @@
 import time
+from tqdm import tqdm
+
 import numpy as np
 
 import torch
@@ -7,7 +9,7 @@ from torch_geometric.loader import DataLoader
 
 from models.base_model import BaseGDA
 from models.ours.simgda_filter.simgda_filter_base import SimGDAFilterBase
-from utils.train_utils.mmd import MMD
+from utils.train_utils.mmd import MMD, Sinkhorn
 
 
 class SimGDAFilter(BaseGDA):
@@ -32,9 +34,12 @@ class SimGDAFilter(BaseGDA):
         else:
             # Backward compatibility with old SimGDA-Filter configs
             self.weight = float(config["model"].get("mmd_weight", 0.1))
+        self.beta = float(config["model"].get("beta", 0.1))
         self.filter_l1_weight = float(config["model"].get("filter_l1_weight", 1e-4))
 
         self.mode = config["model"]["mode"]
+        self.divergence = MMD if config["model"]["divergence"].lower() == "mmd" else Sinkhorn
+
         self.model = None
 
         # Trainable monomial basis vectors (initialized as one-hot).
@@ -83,27 +88,57 @@ class SimGDAFilter(BaseGDA):
             self.target_filter_param,
         )
 
-        if self.adv:
-            source_dlogits = self.model.domain_classifier(source_features, alpha)
-            target_dlogits = self.model.domain_classifier(target_features, alpha)
+        mmd_loss = self.divergence(source_features, target_features)
+        loss = loss + mmd_loss * self.weight
 
-            domain_label = torch.tensor(
-                [0] * source_data.x.shape[0] + [1] * target_data.x.shape[0],
-                device=self.device,
+        if self.beta > 0.0: 
+            # align the filters using probe response
+            source_probe, target_probe = self.generate_probe(source_features, target_features)
+            source_probe = self.model.apply_filter(
+                source_probe,
+                source_data.edge_index,
+                filter_param=self.source_filter_param,
             )
-
-            domain_loss = F.cross_entropy(torch.cat([source_dlogits, target_dlogits], 0), domain_label)
-            loss = loss + self.weight * domain_loss
-        else:
-            mmd_loss = MMD(source_features, target_features)
-            loss = loss + mmd_loss * self.weight
+            target_probe = self.model.apply_filter(
+                target_probe,
+                target_data.edge_index,
+                filter_param=self.target_filter_param,
+            )
+            probe_loss = self.divergence(source_probe, target_probe)
+            loss = loss + self.beta * probe_loss
 
         # Small L1 regularization on trainable filter coefficients.
         if self.filter_l1_weight > 0.0:
-            l1_penalty = self.source_filter_param.abs().mean() + self.target_filter_param.abs().mean()
-            loss = loss + self.filter_l1_weight * l1_penalty
+            source_reg = (self.source_filter_param.abs().sum() - 1.0) ** 2
+            target_reg = (self.target_filter_param.abs().sum() - 1.0) ** 2
+            loss = loss + self.filter_l1_weight * (source_reg + target_reg)
 
         return loss, source_logits, target_logits
+    
+
+    def generate_probe(self, source_data, target_data, use_target=True):
+        """
+        {source/target}_data: tensor of shape [num_nodes, hid_dim]
+        For now let's bootstrap the given data (target by default) as the probe (by first detaching it form the optimizaiion graph).
+        """
+
+        probe_bank = target_data.detach().clone()
+        if not use_target:
+            probe_bank = source_data.detach().clone()
+
+        num_src = source_data.shape[0]
+        num_tgt = target_data.shape[0]
+        num_bank = probe_bank.shape[0]
+
+        # boot strap the features from the probe bank
+        src_idx = torch.randint(0, num_bank, (num_src,), device=source_data.device)
+        tgt_idx = torch.randint(0, num_bank, (num_tgt,), device=target_data.device)
+
+        source_probe = probe_bank[src_idx]
+        target_probe = probe_bank[tgt_idx]
+
+        return source_probe, target_probe
+
 
     def fit(self, source_data, target_data):
         self.num_source_nodes = source_data.x.shape[0]
@@ -136,8 +171,6 @@ class SimGDAFilter(BaseGDA):
             lr=self.lr,
             weight_decay=self.weight_decay,
         )
-
-        from tqdm import tqdm
 
         for epoch in tqdm(range(self.epoch), desc="Training"):
             epoch_loss = 0.0

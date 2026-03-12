@@ -89,7 +89,8 @@ def main() -> None:
     parser.add_argument("--name", type=str, default="")
     args = parser.parse_args()
 
-    run_ids = "0228_195734,0301_183501,0301_190316"
+    # run_ids = "0312_195825"
+    run_ids = "0310_193811,0310_193750"
     args.run_ids = run_ids
 
     print(f"\n Using run IDs: {args.run_ids}")

@@ -29,6 +29,8 @@ class SimGDA(BaseGDA):
         # self.gamma = config["model"]["gamma"]
 
         self.mmd_weight = config["model"]["mmd_weight"]
+        self.mmd_weight = 0.0
+
         self.mode = config["model"]["mode"]
         self.simgda = None
 

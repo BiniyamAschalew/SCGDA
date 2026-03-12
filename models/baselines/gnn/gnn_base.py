@@ -67,3 +67,5 @@ class GNNBase(nn.Module):
             x = self.cls(x)
         
         return x
+
+
