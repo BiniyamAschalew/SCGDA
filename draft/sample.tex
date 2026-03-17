@@ -1,0 +1,70 @@
+\documentclass{article}
+
+% ---------- Packages ----------
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{graphicx}
+\usepackage{booktabs}
+\usepackage{hyperref}
+
+% ---------- Title ----------
+\title{A Simple Example of a LaTeX Paper}
+\author{Biniyam Tolera}
+\date{\today}
+
+\begin{document}
+
+\maketitle
+
+\begin{abstract}
+This is a simple example of a LaTeX document compiled using 
+VSCode and LaTeX Workshop on a remote server.
+\end{abstract}
+
+\section{Introduction}
+
+LaTeX is widely used for writing academic papers.
+Equation example:
+
+\begin{equation}
+f(x) = x^2 + 2x + 1
+\end{equation}
+
+\section{Method}
+
+A common matrix expression:
+
+\begin{equation}
+A = U \Lambda U^\top
+\end{equation}
+
+where $U$ contains eigenvectors and $\Lambda$ contains eigenvalues.
+
+\section{Figure Example}
+
+\begin{figure}[h]
+\centering
+\includegraphics[width=0.4\textwidth]{example-image}
+\caption{Example placeholder image.}
+\end{figure}
+
+\section{Table Example}
+
+\begin{table}[h]
+\centering
+\begin{tabular}{lcc}
+\toprule
+Model & Accuracy & Time \\
+\midrule
+Method A & 92\% & 1.2s \\
+Method B & 94\% & 1.5s \\
+\bottomrule
+\end{tabular}
+\caption{Example table.}
+\end{table}
+
+\section{Conclusion}
+
+This document demonstrates the basic structure of a LaTeX paper.
+
+\end{document}

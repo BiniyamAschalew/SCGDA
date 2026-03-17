@@ -1,6 +1,7 @@
 from torch import nn
 import torch.nn.functional as F
 from models.ours.opal.chebprop import ChebProp
+from models.ours.opal.monoprop import MonoProp
 
 
 
@@ -10,9 +11,13 @@ class OPALBase(nn.Module):
                  dropout_rate=0.0, K=15, cheb_lambda_max=2.0):
         super(OPALBase, self).__init__()
 
-        self.src_filter = ChebProp(K=K)
-        self.tgt_filter = ChebProp(K=K)
-        self.cls_filter = ChebProp(K=K)
+        filter_class = ChebProp
+        # filter_class = MonoProp
+
+
+        self.src_filter = filter_class(K=K)
+        self.tgt_filter = filter_class(K=K)
+        self.cls_filter = filter_class(K=K)
 
         self.encoder = nn.ModuleList()
         self.classifier = nn.ModuleList()

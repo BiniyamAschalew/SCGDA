@@ -5,7 +5,7 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "${SCRIPT_DIR}"
 
-GPUS=(0 1 7)
+GPUS=(0 1 2)
 # GPUS=(5 6 7)
 
 SEEDS=(2026 2027 2028)
@@ -16,6 +16,7 @@ RUN_ID="$(date +%m%d_%H%M%S)"
 # Default: start from imported per-pair HPs, then override overlapping keys via safe_space search.
 USE_IMPORTED="${USE_IMPORTED:-0}"
 FROM_PYGDA="${FROM_PYGDA:-0}"
+BORROW_MODEL="${BORROW_MODEL:-opal}"
 DRY_RUN_PRECHECK="${DRY_RUN_PRECHECK:-1}"
 
 EXTRA_ARGS=()
@@ -24,6 +25,9 @@ if [[ "${USE_IMPORTED}" == "1" || "${USE_IMPORTED}" == "true" || "${USE_IMPORTED
 fi
 if [[ "${FROM_PYGDA}" == "1" || "${FROM_PYGDA}" == "true" || "${FROM_PYGDA}" == "TRUE" ]]; then
   EXTRA_ARGS+=(--from-pygda)
+fi
+if [[ -n "${BORROW_MODEL}" ]]; then
+  EXTRA_ARGS+=(--borrow-model "${BORROW_MODEL}")
 fi
 
 if [ "${#GPUS[@]}" -ne "${#SEEDS[@]}" ]; then
@@ -59,4 +63,4 @@ else
   fi
 fi
 
-echo "HP tuning complete. run_id=${RUN_ID}, config=${CONFIG}, space_dir=${SPACE_DIR}, use_imported=${USE_IMPORTED}, from_pygda=${FROM_PYGDA}"
+echo "HP tuning complete. run_id=${RUN_ID}, config=${CONFIG}, space_dir=${SPACE_DIR}, use_imported=${USE_IMPORTED}, from_pygda=${FROM_PYGDA}, borrow_model=${BORROW_MODEL}"

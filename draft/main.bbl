@@ -1,0 +1,138 @@
+\begin{thebibliography}{10}
+\providecommand{\url}[1]{\texttt{#1}}
+\providecommand{\urlprefix}{URL }
+\providecommand{\doi}[1]{https://doi.org/#1}
+
+\bibitem{og}
+Ben-David, S., Blitzer, J., Crammer, K., Pereira, F.: Analysis of representations for domain adaptation. Advances in neural information processing systems  \textbf{19} (2006)
+
+\bibitem{edgemaskdg}
+Bhattacharya, R., Manwani, N.: Edgemask-dg*: Learning domain-invariant graph structures via adversarial edge masking. arXiv preprint arXiv:2602.05571  (2026)
+
+\bibitem{kbl}
+Bi, W., Cheng, X., Xu, B., Sun, X., Xu, L., Shen, H.: Bridged-gnn: Knowledge bridge learning for effective knowledge transfer. In: Proceedings of the 32nd ACM International Conference on Information and Knowledge Management. pp. 99--109 (2023)
+
+\bibitem{material_science}
+Butler, K.T., Davies, D.W., Cartwright, H., Isayev, O., Walsh, A.: Machine learning for molecular and materials science. Nature  \textbf{559}(7715),  547--555 (2018)
+
+\bibitem{adalign}
+Chen, W., Guo, X., Li, S., Zhang, Z., Zhong, Y., Zhuang, F., et~al.: Learning adaptive distribution alignment with neural characteristic function for graph domain adaptation. arXiv preprint arXiv:2602.10489  (2026)
+
+\bibitem{tdss}
+Chen, W., Ye, G., Wang, Y., Zhang, Z., Zhang, L., Wang, D., Zhang, Z., Zhuang, F.: Smoothness really matters: A simple yet effective approach for unsupervised graph domain adaptation. In: Proceedings of the AAAI Conference on Artificial Intelligence. vol.~39, pp. 15875--15883 (2025)
+
+\bibitem{drug_discovery}
+Choo, H.Y., Wee, J., Shen, C., Xia, K.: Fingerprint-enhanced graph attention network (fingat) model for antibiotic discovery. Journal of Chemical Information and Modeling  \textbf{63}(10),  2928--2935 (2023)
+
+\bibitem{cuturi13}
+Cuturi, M.: Sinkhorn distances: Lightspeed computation of optimal transport. Advances in neural information processing systems  \textbf{26} (2013)
+
+\bibitem{adagcn}
+Dai, Q., Wu, X.M., Xiao, J., Shen, X., Wang, D.: Graph transfer learning via adversarial domain adaptation with graph convolution. IEEE Transactions on Knowledge and Data Engineering  \textbf{35}(5),  4908--4922 (2022)
+
+\bibitem{defferrard2016convolutional}
+Defferrard, M., Bresson, X., Vandergheynst, P.: Convolutional neural networks on graphs with fast localized spectral filtering. Advances in neural information processing systems  \textbf{29} (2016)
+
+\bibitem{csbm}
+Deshpande, Y., Sen, S., Montanari, A., Mossel, E.: Contextual stochastic block models. Advances in neural information processing systems  \textbf{31} (2018)
+
+\bibitem{graphwave}
+Donnat, C., Zitnik, M., Hallac, D., Leskovec, J.: Learning structural node embeddings via diffusion wavelets. In: Proceedings of the 24th ACM SIGKDD international conference on knowledge discovery \& data mining. pp. 1320--1329 (2018)
+
+\bibitem{attr_gda}
+Fang, R., Li, B., Kang, Z., Zeng, Q., Dashtbayaz, N.H., Pu, R., Wang, B., Ling, C.: On the benefits of attribute-driven graph domain adaptation. arXiv preprint arXiv:2502.06808  (2025)
+
+\bibitem{homophily_gda}
+Fang, R., Li, B., Zhao, J., Pu, R., Zeng, Q., Xu, G., Ling, C., Wang, B.: Homophily enhanced graph domain adaptation. arXiv preprint arXiv:2505.20089  (2025)
+
+\bibitem{rsgda}
+Fang, R., Wang, S., Pu, R., Zeng, Q., Zheng, H., Wang, Z., Cai, J., Mei, Z., Tang, S., Ling, C., et~al.: Graph domain adaptation via homophily-agnostic reconstructing structure. arXiv preprint arXiv:2602.07573  (2026)
+
+\bibitem{sinkhorn_interp}
+Feydy, J., S{\'e}journ{\'e}, T., Vialard, F.X., Amari, S.i., Trouv{\'e}, A., Peyr{\'e}, G.: Interpolating between optimal transport and mmd using sinkhorn divergences. In: The 22nd international conference on artificial intelligence and statistics. pp. 2681--2690. PMLR (2019)
+
+\bibitem{gnn_stability}
+Gama, F., Bruna, J., Ribeiro, A.: Stability properties of graph neural networks. IEEE Transactions on Signal Processing  \textbf{68},  5680--5695 (2020)
+
+\bibitem{dann}
+Ganin, Y., Ustinova, E., Ajakan, H., Germain, P., Larochelle, H., Laviolette, F., March, M., Lempitsky, V.: Domain-adversarial training of neural networks. Journal of machine learning research  \textbf{17}(59),  1--35 (2016)
+
+\bibitem{sinkhorn_sample}
+Genevay, A., Chizat, L., Bach, F., Cuturi, M., Peyr{\'e}, G.: Sample complexity of sinkhorn divergences. In: The 22nd international conference on artificial intelligence and statistics. pp. 1574--1583. PMLR (2019)
+
+\bibitem{mmd}
+Gretton, A., Borgwardt, K.M., Rasch, M.J., Sch{\"o}lkopf, B., Smola, A.: A kernel two-sample test. The journal of machine learning research  \textbf{13}(1),  723--773 (2012)
+
+\bibitem{graphalign}
+Hou, Z., Li, H., Cen, Y., Tang, J., Dong, Y.: Graphalign: Pretraining one graph neural network on multiple graphs via feature alignment. arXiv preprint arXiv:2406.02953  (2024)
+
+\bibitem{graphalign_data}
+Huang, R., Xu, J., Jiang, X., An, R., Yang, Y.: Can modifying data address graph domain adaptation? In: Proceedings of the 30th ACM SIGKDD conference on knowledge discovery and data mining. pp. 1131--1142 (2024)
+
+\bibitem{recsys}
+Jiang, X., Zhuang, D., Zhang, X., Chen, H., Luo, J., Gao, X.: Uncertainty quantification via spatial-temporal tweedie model for zero-inflated and long-tail travel demand prediction. In: Proceedings of the 32nd ACM International Conference on Information and Knowledge Management. pp. 3983--3987 (2023)
+
+\bibitem{graph_tasks2}
+Ju, W., Fang, Z., Gu, Y., Liu, Z., Long, Q., Qiao, Z., Qin, Y., Shen, J., Sun, F., Xiao, Z., et~al.: A comprehensive survey on deep graph representation learning. Neural Networks  \textbf{173},  106207 (2024)
+
+\bibitem{gcn}
+Kipf, T.N., Welling, M.: Semi-supervised classification with graph convolutional networks. arXiv preprint arXiv:1609.02907  (2016)
+
+\bibitem{a2gnn}
+Liu, M., Fang, Z., Zhang, Z., Gu, M., Zhou, S., Wang, X., Bu, J.: Rethinking propagation for unsupervised graph domain adaptation. In: Proceedings of the AAAI Conference on Artificial Intelligence. vol.~38, pp. 13963--13971 (2024)
+
+\bibitem{pygda}
+Liu, M., Zhang, Z., Tang, J., Bu, J., He, B., Zhou, S.: Revisiting, benchmarking and understanding unsupervised graph domain adaptation. Advances in Neural Information Processing Systems  \textbf{37},  89408--89436 (2024)
+
+\bibitem{stru_rw}
+Liu, S., Li, T., Feng, Y., Tran, N., Zhao, H., Qiu, Q., Li, P.: Structural re-weighting improves graph domain adaptation. In: International conference on machine learning. pp. 21778--21793. PMLR (2023)
+
+\bibitem{pair_align}
+Liu, S., Zou, D., Zhao, H., Li, P.: Pairwise alignment improves graph domain adaptation. arXiv preprint arXiv:2403.01092  (2024)
+
+\bibitem{dasga}
+Pilanc{\i}, M., Vural, E.: Domain adaptation on graphs by learning aligned graph bases. IEEE Transactions on Knowledge and Data Engineering  \textbf{34}(2),  587--600 (2020)
+
+\bibitem{ot_da}
+Redko, I., Habrard, A., Sebban, M.: Theoretical analysis of domain adaptation with optimal transport. In: Joint European Conference on Machine Learning and Knowledge Discovery in Databases. pp. 737--753. Springer (2017)
+
+\bibitem{jhgda}
+Shi, B., Wang, Y., Guo, F., Shao, J., Shen, H., Cheng, X.: Improving graph domain adaptation with network hierarchy. In: Proceedings of the 32nd ACM international conference on information and knowledge management. pp. 2249--2258 (2023)
+
+\bibitem{shuman2013emerging}
+Shuman, D.I., Narang, S.K., Frossard, P., Ortega, A., Vandergheynst, P.: The emerging field of signal processing on graphs: Extending high-dimensional data analysis to networks and other irregular domains. IEEE signal processing magazine  \textbf{30}(3),  83--98 (2013)
+
+\bibitem{grade}
+Wu, J., He, J., Ainsworth, E.: Non-iid transfer learning on graphs. In: Proceedings of the AAAI conference on artificial intelligence. vol.~37, pp. 10342--10350 (2023)
+
+\bibitem{udagcn}
+Wu, M., Pan, S., Zhou, C., Chang, X., Zhu, X.: Unsupervised domain adaptive graph convolutional networks. In: Proceedings of the web conference 2020. pp. 1457--1467 (2020)
+
+\bibitem{dgsda}
+Yang, L., Chen, X., Zhuo, J., Jin, D., Wang, C., Cao, X., Wang, Z., Guo, Y.: Disentangled graph spectral domain adaptation. In: Forty-second International Conference on Machine Learning (2025)
+
+\bibitem{graphlora}
+Yang, Z.R., Han, J., Wang, C.D., Liu, H.: Graphlora: Structure-aware contrastive low-rank adaptation for cross-graph transfer learning. In: Proceedings of the 31st ACM SIGKDD Conference on Knowledge Discovery and Data Mining V. 1. pp. 1785--1796 (2025)
+
+\bibitem{specreg}
+You, Y., Chen, T., Wang, Z., Shen, Y.: Graph domain adaptation via theory-grounded spectral regularization. In: The eleventh international conference on learning representations (2023)
+
+\bibitem{cmd}
+Zellinger, W., Grubinger, T., Lughofer, E., Natschl{\"a}ger, T., Saminger-Platz, S.: Central moment discrepancy (cmd) for domain-invariant representation learning. arXiv preprint arXiv:1702.08811  (2017)
+
+\bibitem{gadget}
+Zeng, Z., Qiu, R., Bao, W., Wei, T., Lin, X., Yan, Y., Abdelzaher, T.F., Han, J., Tong, H.: Pave your own path: Graph gradual domain adaptation on fused gromov-wasserstein geodesics. arXiv preprint arXiv:2505.12709  (2025)
+
+\bibitem{dane}
+Zhang, Y., Song, G., Du, L., Yang, S., Jin, Y.: Dane: Domain adaptive network embedding. arXiv preprint arXiv:1906.00684  (2019)
+
+\bibitem{graph_tasks1}
+Zhou, Y., Zheng, H., Huang, X., Hao, S., Li, D., Zhao, J.: Graph neural networks: Taxonomy, advances, and trends. ACM Transactions on Intelligent Systems and Technology (TIST)  \textbf{13}(1),  1--54 (2022)
+
+\bibitem{ego_pad}
+Zhu, Q., Yang, C., Xu, Y., Wang, H., Zhang, C., Han, J.: Transfer learning of graph neural networks with ego-graph information maximization. Advances in Neural Information Processing Systems  \textbf{34},  1766--1779 (2021)
+
+\bibitem{hga}
+Zhuang, Y., Shi, C., Yang, C., Zhuang, F., Song, Y.: Semantic-specific hierarchical alignment network for heterogeneous graph adaptation. In: Joint European Conference on Machine Learning and Knowledge Discovery in Databases. pp. 335--350. Springer (2021)
+
+\end{thebibliography}

@@ -1,0 +1,50 @@
+This is BibTeX, Version 0.99e (TeX Live 2026)
+Capacity: max_strings=200000, hash_size=200000, hash_prime=170003
+The top-level auxiliary file: main.aux
+The style file: splncs04.bst
+Database file #1: mybibliography.bib
+Warning--can't use both volume and number fields in tdss
+Warning--can't use both volume and number fields in a2gnn
+Warning--can't use both volume and number fields in grade
+You've used 44 entries,
+            2850 wiz_defined-function locations,
+            832 strings with 13846 characters,
+and the built_in function-call counts, 29867 in all, are:
+= -- 2410
+> -- 1268
+< -- 46
++ -- 519
+- -- 472
+* -- 1984
+:= -- 3860
+add.period$ -- 64
+call.type$ -- 44
+change.case$ -- 399
+chr.to.int$ -- 0
+cite$ -- 47
+duplicate$ -- 2503
+empty$ -- 2405
+format.name$ -- 515
+if$ -- 6399
+int.to.chr$ -- 0
+int.to.str$ -- 44
+missing$ -- 549
+newline$ -- 138
+num.names$ -- 88
+pop$ -- 1077
+preamble$ -- 1
+purify$ -- 321
+quote$ -- 0
+skip$ -- 772
+stack$ -- 0
+substring$ -- 1574
+swap$ -- 1445
+text.length$ -- 46
+text.prefix$ -- 0
+top$ -- 0
+type$ -- 176
+warning$ -- 3
+while$ -- 212
+width$ -- 46
+write$ -- 440
+(There were 3 warnings)

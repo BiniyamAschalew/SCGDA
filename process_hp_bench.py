@@ -53,17 +53,23 @@ def build_best_table(df: pd.DataFrame, metric: str, metrics: list) -> pd.DataFra
         raise ValueError("No successful rows found after filtering.")
 
     agg_metrics = [col for col in metrics if col in work.columns]
+    agg_spec = {"seeds": ("seed", "nunique")}
+    for col in agg_metrics:
+        agg_spec[col] = (col, "mean")
+        agg_spec[f"{col}_std"] = (col, "std")
+
     grouped = (
         work.groupby(
             ["run_id", "model", "dataset", "source", "target", "hp_id", "config_id"],
             dropna=False,
             as_index=False,
         )
-        .agg(
-            **{col: (col, "mean") for col in agg_metrics},
-            seeds=("seed", "nunique"),
-        )
+        .agg(**agg_spec)
     )
+
+    std_cols = [f"{col}_std" for col in agg_metrics]
+    if std_cols:
+        grouped[std_cols] = grouped[std_cols].fillna(0.0)
 
     best = (
         grouped.sort_values([metric, "seeds"], ascending=[False, False])
@@ -90,7 +96,13 @@ def main() -> None:
     args = parser.parse_args()
 
     # run_ids = "0312_195825"
-    run_ids = "0310_193811,0310_193750"
+    # run_ids = "0312_215556"
+    # run_ids = "0313_014217"
+
+
+    # run_ids = "0312_184941"
+    run_ids = "0310_193811,0310_193750,0313_123538"
+    # run_ids = "0310_193811,0310_193750"
     args.run_ids = run_ids
 
     print(f"\n Using run IDs: {args.run_ids}")
@@ -110,19 +122,56 @@ def main() -> None:
     best = build_best_table(all_df, metric=args.metric, metrics=metrics)
     best["scenario"] = best.apply(scenario_label, axis=1)
 
+    value_cols = [args.metric]
+    std_col = f"{args.metric}_std"
+    if std_col in best.columns:
+        value_cols.append(std_col)
+
     pivot = (
         best.pivot_table(
             index=["dataset", "source", "target", "scenario"],
             columns="model",
-            values=args.metric,
+            values=value_cols,
             aggfunc="first",
         )
         .reset_index()
         .sort_values(["dataset", "source", "target"])
     )
 
+    if isinstance(pivot.columns, pd.MultiIndex):
+        pivot.columns = [
+            level0 if not level1 else f"{level1}_{level0}"
+            for level0, level1 in pivot.columns.to_flat_index()
+        ]
+
+    if std_col in best.columns:
+        formatted = best.copy()
+        formatted[args.metric] = formatted.apply(
+            lambda row: f"{row[args.metric]:.4f} ± {row[std_col]:.4f}",
+            axis=1,
+        )
+        pivot_with_std = (
+            formatted.pivot_table(
+                index=["dataset", "source", "target", "scenario"],
+                columns="model",
+                values=args.metric,
+                aggfunc="first",
+            )
+            .reset_index()
+            .sort_values(["dataset", "source", "target"])
+        )
+    else:
+        pivot_with_std = None
+
     model_summary = (
-        best.groupby("model", as_index=False)[[col for col in metrics if col in best.columns]]
+        best.groupby("model", as_index=False)[
+            [
+                col
+                for metric_name in metrics
+                for col in (metric_name, f"{metric_name}_std")
+                if col in best.columns
+            ]
+        ]
         .mean()
         .sort_values(args.metric, ascending=False)
     )
@@ -133,14 +182,19 @@ def main() -> None:
 
     best_path = out_dir / "best_config_per_scenario.csv"
     pivot_path = out_dir / f"benchmark_{args.metric}.csv"
+    pivot_with_std_path = out_dir / f"benchmark_{args.metric}_with_std.csv"
     summary_path = out_dir / "model_summary.csv"
 
     best.to_csv(best_path, index=False)
     pivot.to_csv(pivot_path, index=False)
+    if pivot_with_std is not None:
+        pivot_with_std.to_csv(pivot_with_std_path, index=False)
     model_summary.to_csv(summary_path, index=False)
 
     print(f"Saved: {best_path}")
     print(f"Saved: {pivot_path}")
+    if pivot_with_std is not None:
+        print(f"Saved: {pivot_with_std_path}")
     print(f"Saved: {summary_path}")
 
 

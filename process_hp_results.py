@@ -358,7 +358,7 @@ def main() -> None:
         help="Path to results CSV file, run-id directory, or parent results directory.",
     )
     parser.add_argument(
-        "--results-dir",
+        "--c-dir",
         type=str,
         default="./__saved__/results/hp_tune",
         help="Directory to search for result files if --results is not specified",

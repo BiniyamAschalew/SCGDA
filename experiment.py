@@ -44,9 +44,9 @@ role_type = ROLE_TYPES[2]
 
 SEED = 2025
 # EPOCHS = 200
-DEVICE = "cuda:7"
+DEVICE = "cuda:1"
 
-USE_TUNED = 0
+USE_TUNED = 2
 
 notes = "no_entropy_loss"
 BORROW = None
@@ -59,7 +59,7 @@ FROM_PYGDA = False
 
 id = {
     "model": [30],
-    "dataset": [1],
+    "dataset": [0,1],
     "source": [0],
     "target": [1],
 }

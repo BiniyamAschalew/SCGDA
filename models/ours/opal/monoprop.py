@@ -8,10 +8,10 @@ from torch_geometric.utils import get_laplacian
 from scipy.special import comb
 
 
-class ChebProp(MessagePassing):
+class MonoProp(MessagePassing):
    
     def __init__(self, K, is_source_domain=True, bias=True, **kwargs):
-        super(ChebProp, self).__init__(aggr='add', **kwargs)
+        super(MonoProp, self).__init__(aggr='add', **kwargs)
 
         self.K = K
         self.is_source_domain = is_source_domain
@@ -74,7 +74,7 @@ class ChebProp(MessagePassing):
         # ChebConv-style scaled operator gives L_hat.
         # We flip sign to use normalized adjacency A_norm as the base operator
         # (for lambda_max=2, this becomes exactly A_norm).
-        # edge_weight = -edge_weight
+        edge_weight = -edge_weight
 
         return edge_index, edge_weight
 
@@ -96,22 +96,13 @@ class ChebProp(MessagePassing):
             batch=batch,
         )
 
-        # T_0(x)
-        t0 = x
-        out = TEMP[0] * t0
+        # we are using plain monomial basis (GPRGNN style), so the k-th term is simply A^k x
+        out = 0
+        h = x
+        for k in range(self.K):
 
-        if self.K > 1:
-            # T_1(x) = L_hat x
-            t1 = self.propagate(edge_index1, x=t0, norm=norm1, size=None)
-            out = out + TEMP[1] * t1
-
-            # T_k(x) = 2 L_hat T_{k-1}(x) - T_{k-2}(x)
-            for k in range(2, self.K):
-                t2 = self.propagate(edge_index1, x=t1, norm=norm1, size=None)
-                t2 = 2.0 * t2 - t0
-                out = out + TEMP[k] * t2
-                t0, t1 = t1, t2
-
+            out = out + TEMP[k] * h
+            h = self.propagate(edge_index1, x=h, norm=norm1, size=None)
         return out
 
 
@@ -120,16 +111,9 @@ class ChebProp(MessagePassing):
         return norm.view(-1, 1) * x_j
 
     def to_polynomial(self):
-        """convert the temp basis coefficients from chebyshev basis to monomial basis"""
-        K = self.K
-        temp = self.coef
-        coefs = torch.zeros(K, device=temp.device)
-        for k in range(K):
-            for j in range(k + 1):
-                if j == 0:
-                    coefs[j] = coefs[j] + temp[k] * (comb(k, j) * (2 ** (k - j)))
-                else:
-                    coefs[j] = coefs[j] + temp[k] * (comb(k, j) * (2 ** (k - j)) + comb(k - 1, j - 1) * (2 ** (k - j)))
+        """already polynomial"""
+
+        coefs = self.coef.detach().cpu().numpy().tolist()
         return coefs
 
     def __repr__(self):
