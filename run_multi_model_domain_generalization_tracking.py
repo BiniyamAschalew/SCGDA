@@ -6,12 +6,12 @@ import time
 
 import torch
 
-from Learn.Clean_SCGDA.experiments.analysis.multi_model_domain_generalization_tracking.experiment import (
+from  experiments.analysis.multi_model_domain_generalization_tracking.experiment import (
     MODEL_VARIANTS,
     build_variant_dataset_rollup,
     run_multi_seed_variant_experiment,
 )
-from Learn.Clean_SCGDA.experiments.analysis.plain_gnn_cross_domain.log_plot import make_output_dir
+from  experiments.analysis.plain_gnn_cross_domain.log_plot import make_output_dir
 
 
 EXPERIMENT_SETTINGS = {

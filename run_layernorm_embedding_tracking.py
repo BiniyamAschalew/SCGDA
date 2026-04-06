@@ -7,7 +7,7 @@ import time
 
 import torch
 
-from Learn.Clean_SCGDA.experiments.analysis.layernorm_embedding_tracking.experiment import run_experiment
+from  experiments.analysis.layernorm_embedding_tracking.experiment import run_experiment
 
 
 TRANSFER_SETTINGS = {

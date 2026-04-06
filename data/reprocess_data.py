@@ -2,8 +2,8 @@
 
 import os
 
-from Learn.Clean_SCGDA.data.build_dataset import get_dataset
-from Learn.Clean_SCGDA.utils.config_utils import build_config
+from  data.build_dataset import get_dataset
+from  utils.config_utils import build_config
 
 
 # Edit this dictionary directly.

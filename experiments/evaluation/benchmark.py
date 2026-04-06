@@ -7,9 +7,9 @@ import time
 import pandas as pd
 import yaml
 
-from Learn.Clean_SCGDA.utils.config_utils import build_config
-from Learn.Clean_SCGDA.utils.expt_utils import to_valid_dir
-from Learn.Clean_SCGDA.run import run
+from  utils.config_utils import build_config
+from  utils.expt_utils import to_valid_dir
+from  run import run
 
 
 config_dir = "./configs/expt_configs/bench1.yaml"

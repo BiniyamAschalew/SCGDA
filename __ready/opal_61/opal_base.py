@@ -1,6 +1,6 @@
 from torch import nn
 import torch.nn.functional as F
-from Learn.Clean_SCGDA.models.ours.opal.chebprop import ChebProp
+from  models.ours.opal.chebprop import ChebProp
 
 
 

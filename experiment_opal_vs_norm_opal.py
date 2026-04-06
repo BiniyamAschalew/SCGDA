@@ -3,9 +3,9 @@ import time
 
 import pandas as pd
 
-from Learn.Clean_SCGDA.run import run
-from Learn.Clean_SCGDA.utils.config_utils import build_config, load_config
-from Learn.Clean_SCGDA.utils.expt_utils import to_valid_dir
+from  run import run
+from  utils.config_utils import build_config, load_config
+from  utils.expt_utils import to_valid_dir
 
 
 MODEL_SPECS = {

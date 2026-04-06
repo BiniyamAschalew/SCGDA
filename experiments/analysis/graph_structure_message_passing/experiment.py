@@ -12,16 +12,16 @@ from sklearn.decomposition import PCA
 from sklearn.metrics import adjusted_rand_score, normalized_mutual_info_score
 from torch_geometric.transforms import OneHotDegree
 
-from Learn.Clean_SCGDA.data.build_dataset import get_dataset, get_max_degree
-from Learn.Clean_SCGDA.experiments.analysis.graph_structure_message_passing.plotting import (
+from  data.build_dataset import get_dataset, get_max_degree
+from  experiments.analysis.graph_structure_message_passing.plotting import (
     CASE_LABELS,
     CASE_ORDER,
     plot_case_summary,
     plot_domain_metric_grid,
 )
-from Learn.Clean_SCGDA.experiments.analysis.plain_gnn_cross_domain.log_plot import make_output_dir
-from Learn.Clean_SCGDA.utils.ablation_utils.propagation import Propagation
-from Learn.Clean_SCGDA.utils.config_utils import load_config
+from  experiments.analysis.plain_gnn_cross_domain.log_plot import make_output_dir
+from  utils.ablation_utils.propagation import Propagation
+from  utils.config_utils import load_config
 
 
 DEFAULT_DATASETS = ("airport", "blog", "citation")

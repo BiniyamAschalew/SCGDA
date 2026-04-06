@@ -3,7 +3,7 @@ from __future__ import annotations
 import torch
 from torch import nn
 
-from Learn.Clean_SCGDA.models.baselines.gnn.gnn_base import GNNBase
+from  models.baselines.gnn.gnn_base import GNNBase
 
 
 class TripletSimGDAModel(nn.Module):

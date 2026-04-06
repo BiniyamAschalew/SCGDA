@@ -5,9 +5,9 @@ import torch.nn.functional as F
 from torch_geometric.loader import NeighborLoader, DataLoader
 from tqdm import tqdm
 
-from Learn.Clean_SCGDA.models.base_model import BaseGDA
-from Learn.Clean_SCGDA.models.ours.bdlite.bdlite_base import BDliteBase
-from Learn.Clean_SCGDA.utils.train_utils.mmd import MMD
+from  models.base_model import BaseGDA
+from  models.ours.bdlite.bdlite_base import BDliteBase
+from  utils.train_utils.mmd import MMD
 
 
 class BDlite(BaseGDA):

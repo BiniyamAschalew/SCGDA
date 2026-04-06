@@ -13,18 +13,18 @@ from sklearn.ensemble import RandomForestClassifier
 from sklearn.manifold import TSNE
 from sklearn.metrics import f1_score
 
-from Learn.Clean_SCGDA.data.build_dataset import build_dataset
-from Learn.Clean_SCGDA.models.build_model import build_model
-from Learn.Clean_SCGDA.utils.config_utils import build_config
-from Learn.Clean_SCGDA.utils.expt_utils import set_seed
-from Learn.Clean_SCGDA.utils.train_utils.metrics import BaseMetric
-from Learn.Clean_SCGDA.utils.train_utils.mmd import MMD
+from  data.build_dataset import build_dataset
+from  models.build_model import build_model
+from  utils.config_utils import build_config
+from  utils.expt_utils import set_seed
+from  utils.train_utils.metrics import BaseMetric
+from  utils.train_utils.mmd import MMD
 
-from Learn.Clean_SCGDA.experiments.analysis.airport_source_only_gnn_layers.plotting import (
+from  experiments.analysis.airport_source_only_gnn_layers.plotting import (
     plot_snapshot_metric_overview,
     plot_snapshot_progression,
 )
-from Learn.Clean_SCGDA.experiments.analysis.plain_gnn_cross_domain.log_plot import make_output_dir
+from  experiments.analysis.plain_gnn_cross_domain.log_plot import make_output_dir
 
 
 DEFAULT_NUM_LAYERS = 5

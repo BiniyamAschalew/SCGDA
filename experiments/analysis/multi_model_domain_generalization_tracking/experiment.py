@@ -8,7 +8,7 @@ import pandas as pd
 import torch
 import torch.nn.functional as F
 
-from Learn.Clean_SCGDA.experiments.analysis.airport_domain_generalization_tracking.experiment import (
+from  experiments.analysis.airport_domain_generalization_tracking.experiment import (
     _add_derived_metrics,
     _aggregate_histories,
     _build_experiment_config,
@@ -19,13 +19,13 @@ from Learn.Clean_SCGDA.experiments.analysis.airport_domain_generalization_tracki
     _write_summary,
     build_dataset_rollup,
 )
-from Learn.Clean_SCGDA.experiments.analysis.airport_domain_generalization_tracking.plotting import (
+from  experiments.analysis.airport_domain_generalization_tracking.plotting import (
     plot_target_quality_vs_performance,
     plot_training_overview,
 )
-from Learn.Clean_SCGDA.models.build_model import build_model
-from Learn.Clean_SCGDA.utils.expt_utils import set_seed
-from Learn.Clean_SCGDA.utils.train_utils.mmd import MMD
+from  models.build_model import build_model
+from  utils.expt_utils import set_seed
+from  utils.train_utils.mmd import MMD
 
 
 DEFAULT_NUM_LAYERS = 3

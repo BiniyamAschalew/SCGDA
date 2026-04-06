@@ -1,6 +1,6 @@
-from Learn.Clean_SCGDA.models.baselines.gnn.gnn import GNN
+from  models.baselines.gnn.gnn import GNN
 
-from Learn.Clean_SCGDA.models.ours.gprgnn.gprgnn_base import GPRGNNBase
+from  models.ours.gprgnn.gprgnn_base import GPRGNNBase
 
 
 class GPRGNNModel(GNN):

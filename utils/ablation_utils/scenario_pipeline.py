@@ -1,8 +1,8 @@
-from Learn.Clean_SCGDA.utils.expt_utils import set_seed
-from Learn.Clean_SCGDA.utils.ablation_utils.alignment import train_probe_aligner
-from Learn.Clean_SCGDA.utils.ablation_utils.common import load_pair
-from Learn.Clean_SCGDA.utils.ablation_utils.comparison import build_compare_table, build_final_summary
-from Learn.Clean_SCGDA.utils.ablation_utils.transfer import evaluate_transferability
+from  utils.expt_utils import set_seed
+from  utils.ablation_utils.alignment import train_probe_aligner
+from  utils.ablation_utils.common import load_pair
+from  utils.ablation_utils.comparison import build_compare_table, build_final_summary
+from  utils.ablation_utils.transfer import evaluate_transferability
 
 
 def compute_scenario_payload(dataset: str, source: str, target: str, cfg: dict) -> dict:

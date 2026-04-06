@@ -8,9 +8,9 @@ import numpy as np
 
 from torch_geometric.loader import NeighborLoader, DataLoader
 
-from Learn.Clean_SCGDA.models.base_model import BaseGDA
-from Learn.Clean_SCGDA.models.baselines.a2gnn.a2gnn_base import A2GNNBase
-from Learn.Clean_SCGDA.utils.train_utils.mmd import MMD
+from  models.base_model import BaseGDA
+from  models.baselines.a2gnn.a2gnn_base import A2GNNBase
+from  utils.train_utils.mmd import MMD
 
 
 def _weighted_ce_loss(

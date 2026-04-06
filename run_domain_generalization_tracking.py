@@ -6,8 +6,8 @@ import time
 
 import torch
 
-from Learn.Clean_SCGDA.experiments.analysis.plain_gnn_cross_domain.log_plot import make_output_dir
-from Learn.Clean_SCGDA.experiments.analysis.airport_domain_generalization_tracking.experiment import (
+from  experiments.analysis.plain_gnn_cross_domain.log_plot import make_output_dir
+from  experiments.analysis.airport_domain_generalization_tracking.experiment import (
     build_dataset_rollup,
     run_multi_seed_experiment,
 )

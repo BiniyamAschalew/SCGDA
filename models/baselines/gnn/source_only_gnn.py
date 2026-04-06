@@ -3,8 +3,8 @@ import time
 import torch
 import torch.nn.functional as F
 
-from Learn.Clean_SCGDA.models.baselines.gnn.gnn import GNN
-from Learn.Clean_SCGDA.models.baselines.gnn.source_only_gnn_base import SourceOnlyGNNBase
+from  models.baselines.gnn.gnn import GNN
+from  models.baselines.gnn.source_only_gnn_base import SourceOnlyGNNBase
 
 
 def _source_only_nll_loss(logits, labels, mask):

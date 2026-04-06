@@ -5,7 +5,7 @@ from pathlib import Path
 
 import torch
 
-from Learn.Clean_SCGDA.experiments.analysis.simgda_training_tracking.experiment import run_experiment
+from  experiments.analysis.simgda_training_tracking.experiment import run_experiment
 
 
 TRANSFER_SETTINGS = {

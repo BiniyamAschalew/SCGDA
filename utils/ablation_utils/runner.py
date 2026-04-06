@@ -1,5 +1,5 @@
-from Learn.Clean_SCGDA.utils.ablation_utils.reporting import save_aggregate_reports, save_scenario_artifacts
-from Learn.Clean_SCGDA.utils.ablation_utils.scenario_pipeline import compute_scenario_payload
+from  utils.ablation_utils.reporting import save_aggregate_reports, save_scenario_artifacts
+from  utils.ablation_utils.scenario_pipeline import compute_scenario_payload
 
 
 def _init_accumulators(test_config: dict) -> dict:

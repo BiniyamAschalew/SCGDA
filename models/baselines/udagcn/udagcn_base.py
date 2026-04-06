@@ -1,9 +1,9 @@
 import torch
 from torch import nn
 import torch.nn.functional as F
-from Learn.Clean_SCGDA.models.__layers.ppmi_conv import PPMIConv
-from Learn.Clean_SCGDA.models.__layers.cached_gcn_conv import CachedGCNConv
-from Learn.Clean_SCGDA.models.__layers.attention import Attention
+from  models.__layers.ppmi_conv import PPMIConv
+from  models.__layers.cached_gcn_conv import CachedGCNConv
+from  models.__layers.attention import Attention
 
 
 class GNN(torch.nn.Module):

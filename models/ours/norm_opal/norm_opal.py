@@ -1,7 +1,7 @@
 import torch
 
-from Learn.Clean_SCGDA.models.ours.opal.opal import OPAL
-from Learn.Clean_SCGDA.models.ours.norm_opal.norm_opal_base import NormOPALBase
+from  models.ours.opal.opal import OPAL
+from  models.ours.norm_opal.norm_opal_base import NormOPALBase
 
 
 class NormOPAL(OPAL):

@@ -3,8 +3,8 @@ from pathlib import Path
 
 import torch
 
-from Learn.Clean_SCGDA.utils.ablation_utils.common import save_table
-from Learn.Clean_SCGDA.utils.ablation_utils.motivation_plots import plot_average_quad
+from  utils.ablation_utils.common import save_table
+from  utils.ablation_utils.motivation_plots import plot_average_quad
 
 
 MMD_SUMMARY_KEYS = [

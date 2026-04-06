@@ -25,8 +25,8 @@ def _jobs() -> list[dict]:
 
 
 def _run_one(job: dict) -> dict:
-    from Learn.Clean_SCGDA.utils.config_utils import build_config
-    from Learn.Clean_SCGDA.run import run
+    from  utils.config_utils import build_config
+    from  run import run
 
     try:
         with redirect_stdout(io.StringIO()), redirect_stderr(io.StringIO()):

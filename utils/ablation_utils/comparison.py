@@ -1,14 +1,14 @@
 import torch
 
-from Learn.Clean_SCGDA.utils.filter_utils import make_gaussian_probe
-from Learn.Clean_SCGDA.utils.ablation_utils.common import sample_idx
-from Learn.Clean_SCGDA.utils.ablation_utils.metrics import compute_shift_metrics
-from Learn.Clean_SCGDA.utils.ablation_utils.propagation import (
+from  utils.filter_utils import make_gaussian_probe
+from  utils.ablation_utils.common import sample_idx
+from  utils.ablation_utils.metrics import compute_shift_metrics
+from  utils.ablation_utils.propagation import (
     WeightedPropagation,
     propagate_fixed_cheb_layers,
     propagate_weighted_layers,
 )
-from Learn.Clean_SCGDA.utils.ablation_utils.structure import edge_distance_metrics
+from  utils.ablation_utils.structure import edge_distance_metrics
 
 
 COMPARE_METRIC_KEYS = [

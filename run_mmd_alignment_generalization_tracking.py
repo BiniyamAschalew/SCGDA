@@ -7,7 +7,7 @@ import time
 
 import torch
 
-from Learn.Clean_SCGDA.experiments.analysis.mmd_alignment_generalization_tracking.experiment import run_experiment
+from  experiments.analysis.mmd_alignment_generalization_tracking.experiment import run_experiment
 
 
 TRANSFER_SETTINGS = {

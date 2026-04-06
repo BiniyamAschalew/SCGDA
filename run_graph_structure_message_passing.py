@@ -5,7 +5,7 @@ from pathlib import Path
 
 import torch
 
-from Learn.Clean_SCGDA.experiments.analysis.graph_structure_message_passing.experiment import (
+from  experiments.analysis.graph_structure_message_passing.experiment import (
     DEFAULT_DATASETS,
     run_experiment,
 )

@@ -2,7 +2,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-from Learn.Clean_SCGDA.models.__layers.reverse_layer import GradReverse
+from  models.__layers.reverse_layer import GradReverse
 
 
 class FE1(nn.Module):

@@ -2,9 +2,9 @@ import time
 import torch
 import torch.nn.functional as F
 
-from Learn.Clean_SCGDA.models.base_model import BaseGDA
-from Learn.Clean_SCGDA.models.__components.bernnet import BernNetBase
-from Learn.Clean_SCGDA.utils.train_utils.mmd import mmd_kernel
+from  models.base_model import BaseGDA
+from  models.__components.bernnet import BernNetBase
+from  utils.train_utils.mmd import mmd_kernel
 
 
 class StructAlign2(BaseGDA):

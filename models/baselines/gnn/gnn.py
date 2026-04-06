@@ -3,8 +3,8 @@ import torch
 import torch.nn.functional as F
 from torch_geometric.loader import NeighborLoader
 
-from Learn.Clean_SCGDA.models.base_model import BaseGDA
-from Learn.Clean_SCGDA.models.baselines.gnn.gnn_base import GNNBase
+from  models.base_model import BaseGDA
+from  models.baselines.gnn.gnn_base import GNNBase
 
 
 def _weighted_nll_loss(

@@ -1,6 +1,6 @@
 from pygda.models import SpecReg as SpecRegImported
 
-from Learn.Clean_SCGDA.models.base_model import BaseGDA
+from  models.base_model import BaseGDA
 
 
 class SpecReg(BaseGDA):

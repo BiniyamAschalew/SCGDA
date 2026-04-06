@@ -67,13 +67,13 @@ from torch_geometric.transforms import OneHotDegree
 
 torch.set_num_threads(4)
 
-from Learn.Clean_SCGDA.data.build_dataset import get_dataset, get_max_degree
-from Learn.Clean_SCGDA.experiments.analysis.plain_gnn_cross_domain.log_plot import make_output_dir
-from Learn.Clean_SCGDA.models.__layers.build_layer import build_activation, build_layer
-from Learn.Clean_SCGDA.utils.config_utils import build_config, load_config
-from Learn.Clean_SCGDA.utils.expt_utils import set_seed
-from Learn.Clean_SCGDA.utils.train_utils.metrics import BaseMetric
-from Learn.Clean_SCGDA.utils.train_utils.mmd import MMD
+from  data.build_dataset import get_dataset, get_max_degree
+from  experiments.analysis.plain_gnn_cross_domain.log_plot import make_output_dir
+from  models.__layers.build_layer import build_activation, build_layer
+from  utils.config_utils import build_config, load_config
+from  utils.expt_utils import set_seed
+from  utils.train_utils.metrics import BaseMetric
+from  utils.train_utils.mmd import MMD
 
 
 warnings.filterwarnings("ignore", category=DeprecationWarning)

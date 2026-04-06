@@ -3,7 +3,7 @@ from pathlib import Path
 import matplotlib.pyplot as plt
 import torch
 
-from Learn.Clean_SCGDA.utils.ablation_utils.common import save_table
+from  utils.ablation_utils.common import save_table
 
 
 def edge_distance_metrics(

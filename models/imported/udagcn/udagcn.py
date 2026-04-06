@@ -1,5 +1,5 @@
 from pygda.models import UDAGCN as UDAGCN_imported
-from Learn.Clean_SCGDA.models.base_model import BaseGDA
+from  models.base_model import BaseGDA
 
 class UDAGCN(BaseGDA):
     def __init__(self, config):

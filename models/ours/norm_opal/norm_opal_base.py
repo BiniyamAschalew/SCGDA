@@ -2,7 +2,7 @@ import torch
 from torch import nn
 import torch.nn.functional as F
 
-from Learn.Clean_SCGDA.models.ours.opal.opal_base import OPALBase
+from  models.ours.opal.opal_base import OPALBase
 
 
 class NormOPALBase(OPALBase):

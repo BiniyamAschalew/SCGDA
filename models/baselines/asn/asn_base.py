@@ -5,10 +5,10 @@ import torch.nn.functional as F
 from torch_geometric.nn import GCNConv
 from torch_geometric.utils import to_dense_adj
 
-from Learn.Clean_SCGDA.models.__layers.ppmi_conv import PPMIConv
-from Learn.Clean_SCGDA.models.__layers.cached_gcn_conv import CachedGCNConv
-from Learn.Clean_SCGDA.models.__layers.reverse_layer import GradReverse
-from Learn.Clean_SCGDA.models.__layers.attention import Attention
+from  models.__layers.ppmi_conv import PPMIConv
+from  models.__layers.cached_gcn_conv import CachedGCNConv
+from  models.__layers.reverse_layer import GradReverse
+from  models.__layers.attention import Attention
 
 
 

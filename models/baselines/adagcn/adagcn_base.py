@@ -4,7 +4,7 @@ import torch.nn.functional as F
 
 from torch_geometric.nn import GCNConv
 
-from Learn.Clean_SCGDA.models.__layers.ppmi_conv import PPMIConv
+from  models.__layers.ppmi_conv import PPMIConv
 from torch_geometric.nn import global_mean_pool
 
 

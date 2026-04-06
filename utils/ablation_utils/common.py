@@ -3,8 +3,8 @@ import csv
 
 import torch
 
-from Learn.Clean_SCGDA.data.build_dataset import build_dataset
-from Learn.Clean_SCGDA.utils.config_utils import build_config
+from  data.build_dataset import build_dataset
+from  utils.config_utils import build_config
 
 
 def load_pair(dataset: str, source: str, target: str, device: str, seed: int):

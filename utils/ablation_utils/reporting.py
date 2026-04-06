@@ -2,16 +2,16 @@ from pathlib import Path
 
 import torch
 
-from Learn.Clean_SCGDA.utils.ablation_utils.common import build_average_rows, save_table
-from Learn.Clean_SCGDA.utils.ablation_utils.comparison import COMPARE_METRIC_KEYS
-from Learn.Clean_SCGDA.utils.ablation_utils.plots import (
+from  utils.ablation_utils.common import build_average_rows, save_table
+from  utils.ablation_utils.comparison import COMPARE_METRIC_KEYS
+from  utils.ablation_utils.plots import (
     save_align_history_plot,
     save_average_target_transfer_plot,
     save_compare_plot,
     save_transferability_plot,
 )
-from Learn.Clean_SCGDA.utils.ablation_utils.structure import save_structural_analysis
-from Learn.Clean_SCGDA.utils.ablation_utils.transfer import (
+from  utils.ablation_utils.structure import save_structural_analysis
+from  utils.ablation_utils.transfer import (
     build_average_target_transfer_rows,
     write_transferability_protocol,
 )

@@ -8,7 +8,7 @@ from pathlib import Path
 
 import pandas as pd
 import yaml
-from Learn.Clean_SCGDA.utils.config_utils import build_config
+from  utils.config_utils import build_config
 
 
 META_COLS = {

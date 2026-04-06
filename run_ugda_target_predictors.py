@@ -19,7 +19,7 @@ def _bootstrap_repo_alias() -> None:
 
 _bootstrap_repo_alias()
 
-from Learn.Clean_SCGDA.experiments.analysis.ugda_target_predictors.experiment import parse_args, run_experiment
+from  experiments.analysis.ugda_target_predictors.experiment import parse_args, run_experiment
 
 
 if __name__ == "__main__":

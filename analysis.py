@@ -1,4 +1,4 @@
-from Learn.Clean_SCGDA.experiments.analysis.bound_importance.experiment import main
+from  experiments.analysis.bound_importance.experiment import main
 
 main()
 

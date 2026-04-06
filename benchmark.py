@@ -266,8 +266,8 @@ def aggregate_seed_results(run_dir: str, note: str):
 
 
 def run_seed_benchmark(seed: int, config: dict, save_dir: str):
-    from Learn.Clean_SCGDA.run import run
-    from Learn.Clean_SCGDA.utils.config_utils import build_config
+    from  run import run
+    from  utils.config_utils import build_config
 
     model_specs = normalize_model_specs(config["model_hps"])
     transfer_pairs = list(iter_transfer_pairs(config["transfer_settings"]))

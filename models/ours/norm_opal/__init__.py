@@ -1,1 +1,1 @@
-from Learn.Clean_SCGDA.models.ours.norm_opal.norm_opal import NormOPAL
+from  models.ours.norm_opal.norm_opal import NormOPAL

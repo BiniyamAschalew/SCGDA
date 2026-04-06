@@ -33,14 +33,14 @@ import torch
 
 torch.set_num_threads(4)
 
-from Learn.Clean_SCGDA.data.build_dataset import build_dataset
-from Learn.Clean_SCGDA.models.build_model import build_model
-from Learn.Clean_SCGDA.utils.config_utils import build_config
-from Learn.Clean_SCGDA.utils.expt_utils import set_seed
-from Learn.Clean_SCGDA.utils.train_utils.metrics import BaseMetric
-from Learn.Clean_SCGDA.utils.train_utils.mmd import MMD
+from  data.build_dataset import build_dataset
+from  models.build_model import build_model
+from  utils.config_utils import build_config
+from  utils.expt_utils import set_seed
+from  utils.train_utils.metrics import BaseMetric
+from  utils.train_utils.mmd import MMD
 
-from Learn.Clean_SCGDA.experiments.analysis.bound_importance.log_plot import (
+from  experiments.analysis.bound_importance.log_plot import (
     finalize_outputs,
     make_output_dir,
 )

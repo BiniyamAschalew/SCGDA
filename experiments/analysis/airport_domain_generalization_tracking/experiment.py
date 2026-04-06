@@ -11,16 +11,16 @@ import torch
 import torch.nn.functional as F
 from torch_geometric.transforms import OneHotDegree
 
-from Learn.Clean_SCGDA.data.build_dataset import get_dataset, get_max_degree
-from Learn.Clean_SCGDA.experiments.analysis.airport_domain_generalization_tracking.plotting import (
+from  data.build_dataset import get_dataset, get_max_degree
+from  experiments.analysis.airport_domain_generalization_tracking.plotting import (
     plot_target_quality_vs_performance,
     plot_training_overview,
 )
-from Learn.Clean_SCGDA.experiments.analysis.plain_gnn_cross_domain.log_plot import make_output_dir
-from Learn.Clean_SCGDA.models.build_model import build_model
-from Learn.Clean_SCGDA.utils.config_utils import build_config, load_config
-from Learn.Clean_SCGDA.utils.expt_utils import set_seed
-from Learn.Clean_SCGDA.utils.train_utils.mmd import MMD
+from  experiments.analysis.plain_gnn_cross_domain.log_plot import make_output_dir
+from  models.build_model import build_model
+from  utils.config_utils import build_config, load_config
+from  utils.expt_utils import set_seed
+from  utils.train_utils.mmd import MMD
 
 
 DEFAULT_NUM_LAYERS = 2

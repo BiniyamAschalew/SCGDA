@@ -48,12 +48,12 @@ _bootstrap_repo_alias()
 
 from plotting import plot_correlation_bars, plot_cv_bars, plot_predictor_scatter_grid
 
-from Learn.Clean_SCGDA.models.build_model import build_model
-from Learn.Clean_SCGDA.utils.ablation_utils.common import load_pair
-from Learn.Clean_SCGDA.utils.config_utils import build_config, load_config
-from Learn.Clean_SCGDA.utils.expt_utils import set_seed
-from Learn.Clean_SCGDA.utils.filter_utils import conditional_mmd, mmd_rbf
-from Learn.Clean_SCGDA.utils.train_utils.metrics import BaseMetric
+from  models.build_model import build_model
+from  utils.ablation_utils.common import load_pair
+from  utils.config_utils import build_config, load_config
+from  utils.expt_utils import set_seed
+from  utils.filter_utils import conditional_mmd, mmd_rbf
+from  utils.train_utils.metrics import BaseMetric
 
 
 warnings.filterwarnings("ignore", category=DeprecationWarning)

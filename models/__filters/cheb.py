@@ -4,7 +4,7 @@ import torch
 from torch_geometric.nn.conv import MessagePassing
 from torch_geometric.utils import get_laplacian
 
-from Learn.Clean_SCGDA.utils.filter_utils import cheb_to_monomial
+from  utils.filter_utils import cheb_to_monomial
 
 
 def _adj_norm(edge_index, edge_weight, num_nodes, dtype, lambda_max=2.0):

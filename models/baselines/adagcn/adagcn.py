@@ -9,8 +9,8 @@ from torch_geometric.loader import NeighborLoader, DataLoader
 from itertools import chain
 
 
-from Learn.Clean_SCGDA.models.base_model import BaseGDA
-from Learn.Clean_SCGDA.models.baselines.adagcn.adagcn_base import AdaGCNBase
+from  models.base_model import BaseGDA
+from  models.baselines.adagcn.adagcn_base import AdaGCNBase
 
 
 def _weighted_ce_loss(

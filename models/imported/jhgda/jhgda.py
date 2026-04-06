@@ -1,5 +1,5 @@
 from pygda.models import JHGDA as JHGDA_imported
-from Learn.Clean_SCGDA.models.base_model import BaseGDA
+from  models.base_model import BaseGDA
 
 class JHGDA(BaseGDA):
     def __init__(self, config):

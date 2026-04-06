@@ -17,13 +17,13 @@ ROOT_DIR = Path(__file__).resolve().parents[3]
 if str(ROOT_DIR) not in sys.path:
     sys.path.insert(0, str(ROOT_DIR))
 
-from Learn.Clean_SCGDA.data.build_dataset import get_dataset, get_max_degree
-from Learn.Clean_SCGDA.models.baselines.gnn.gnn_base import GNNBase
-from Learn.Clean_SCGDA.utils.config_utils import load_config
-from Learn.Clean_SCGDA.utils.expt_utils import set_seed
-from Learn.Clean_SCGDA.utils.train_utils.metrics import BaseMetric
-from Learn.Clean_SCGDA.utils.train_utils.mmd import MMD
-from Learn.Clean_SCGDA.utils.train_utils.sinkhorn import get_Sinkhorn
+from  data.build_dataset import get_dataset, get_max_degree
+from  models.baselines.gnn.gnn_base import GNNBase
+from  utils.config_utils import load_config
+from  utils.expt_utils import set_seed
+from  utils.train_utils.metrics import BaseMetric
+from  utils.train_utils.mmd import MMD
+from  utils.train_utils.sinkhorn import get_Sinkhorn
 
 from .log_plot import finalize_outputs, make_output_dir
 

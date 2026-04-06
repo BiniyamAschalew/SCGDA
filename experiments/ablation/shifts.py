@@ -17,9 +17,9 @@ import torch
 from torch_geometric.nn.conv import MessagePassing
 from torch_geometric.utils import add_self_loops, degree
 
-from Learn.Clean_SCGDA.data.build_dataset import build_dataset
-from Learn.Clean_SCGDA.utils.config_utils import build_config
-from Learn.Clean_SCGDA.utils.expt_utils import set_seed
+from  data.build_dataset import build_dataset
+from  utils.config_utils import build_config
+from  utils.expt_utils import set_seed
 
 
 class Propagation(MessagePassing):

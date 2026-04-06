@@ -6,7 +6,7 @@ import warnings
 import torch
 from torch_geometric.transforms import OneHotDegree
 
-from Learn.Clean_SCGDA.data.build_dataset import get_dataset, get_max_degree
+from  data.build_dataset import get_dataset, get_max_degree
 
 from .config import ExperimentConfig, TripletSpec, dataset_config
 

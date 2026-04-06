@@ -5,7 +5,7 @@ from sklearn.metrics import f1_score
 import torch
 import torch.nn.functional as F
 
-from Learn.Clean_SCGDA.utils.filter_utils import mmd_rbf
+from  utils.filter_utils import mmd_rbf
 
 
 def mask_tensor(data, name: str) -> torch.Tensor:

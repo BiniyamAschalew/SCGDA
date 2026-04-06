@@ -1,6 +1,6 @@
 from pygda.models import AdaGCN as AdaGCNImported
 
-from Learn.Clean_SCGDA.models.base_model import BaseGDA
+from  models.base_model import BaseGDA
 
 
 class AdaGCN(BaseGDA):

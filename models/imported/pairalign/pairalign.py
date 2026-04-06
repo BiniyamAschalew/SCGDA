@@ -1,6 +1,6 @@
 from pygda.models import PairAlign as PairAlignImported
 
-from Learn.Clean_SCGDA.models.base_model import BaseGDA
+from  models.base_model import BaseGDA
 
 
 class PairAlign(BaseGDA):

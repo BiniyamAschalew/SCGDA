@@ -14,9 +14,9 @@ import scipy.sparse as sp
 from scipy.sparse import csc_matrix, lil_matrix
 from scipy.sparse import vstack
 
-from Learn.Clean_SCGDA.models.base_model import BaseGDA
-from Learn.Clean_SCGDA.models.baselines.asn.asn_base import ASNBase 
-from Learn.Clean_SCGDA.models.__layers.reverse_layer import GradReverse
+from  models.base_model import BaseGDA
+from  models.baselines.asn.asn_base import ASNBase 
+from  models.__layers.reverse_layer import GradReverse
 
 import warnings
 warnings.filterwarnings('ignore', '.*Sparse CSR tensor support is in beta state.*')

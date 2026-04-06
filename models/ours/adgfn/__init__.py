@@ -1,3 +1,3 @@
-from Learn.Clean_SCGDA.models.ours.adgfn.adgfn import ADGFN
+from  models.ours.adgfn.adgfn import ADGFN
 
 __all__ = ["ADGFN"]

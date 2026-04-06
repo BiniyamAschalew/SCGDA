@@ -5,8 +5,8 @@ import torch.nn as nn
 import torch.nn.functional as F
 from torch_geometric.utils import get_laplacian
 
-from Learn.Clean_SCGDA.models.base_model import BaseGDA
-from Learn.Clean_SCGDA.models.__filters.mono import MonoProp
+from  models.base_model import BaseGDA
+from  models.__filters.mono import MonoProp
 
 
 class OPALBase(nn.Module):

@@ -1,8 +1,8 @@
 """In this experiment we evaluate the perforance degradation of a GNN
 with respect to distribution shift """
 
-from Learn.Clean_SCGDA.models.baselines.gnn.gnn import GNN
-from Learn.Clean_SCGDA.models.baselines.simgda.simgda import SimGDA
+from  models.baselines.gnn.gnn import GNN
+from  models.baselines.simgda.simgda import SimGDA
 
 
 if __name__ == "__main__":

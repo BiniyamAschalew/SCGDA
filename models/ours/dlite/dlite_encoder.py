@@ -10,7 +10,7 @@ from torch import nn
 import torch.nn.functional as F
 from torch_geometric.nn import ChebConv
 
-from Learn.Clean_SCGDA.models.__layers.build_layer import build_activation
+from  models.__layers.build_layer import build_activation
 
 
 class DLITEncoder(nn.Module):

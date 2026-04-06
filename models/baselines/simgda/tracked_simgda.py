@@ -3,8 +3,8 @@ import time
 import torch
 import torch.nn.functional as F
 
-from Learn.Clean_SCGDA.models.baselines.simgda.simgda import SimGDA
-from Learn.Clean_SCGDA.utils.train_utils.mmd import MMD
+from  models.baselines.simgda.simgda import SimGDA
+from  utils.train_utils.mmd import MMD
 
 
 def _safe_mmd(features_a: torch.Tensor, features_b: torch.Tensor) -> float:

@@ -5,7 +5,7 @@ import torch.nn.functional as F
 from torch.nn import Sequential, Linear
 from torch_geometric.nn import global_mean_pool
 
-from Learn.Clean_SCGDA.models.__layers.build_layer import build_activation
+from  models.__layers.build_layer import build_activation
 
 class MLPBase(nn.Module):
 

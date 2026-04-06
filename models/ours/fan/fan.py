@@ -6,9 +6,9 @@ import torch.nn as nn
 import torch.nn.functional as F
 from torch_geometric.loader import DataLoader
 
-from Learn.Clean_SCGDA.models.base_model import BaseGDA
-from Learn.Clean_SCGDA.models.ours.fan.fan_base import FANBase
-from Learn.Clean_SCGDA.utils.train_utils.mmd import MMD
+from  models.base_model import BaseGDA
+from  models.ours.fan.fan_base import FANBase
+from  utils.train_utils.mmd import MMD
 
 
 class LearnableProbeDistribution(nn.Module):

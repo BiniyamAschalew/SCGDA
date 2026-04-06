@@ -15,8 +15,8 @@ try:
     from .models import GNN, SpectralGNN
     from .utils import accuracy, ensure_dir, set_seed, to_tensor, train_test_split
 except ImportError:
-    from Learn.Clean_SCGDA.struct_shift.models import GNN, SpectralGNN
-    from Learn.Clean_SCGDA.struct_shift.utils import accuracy, ensure_dir, set_seed, to_tensor, train_test_split
+    from  struct_shift.models import GNN, SpectralGNN
+    from  struct_shift.utils import accuracy, ensure_dir, set_seed, to_tensor, train_test_split
 
 
 MODEL_ALIASES = {"weight_align": "gnn", "filter_align": "spectral_gnn"}

@@ -7,10 +7,10 @@ import numpy as np
 
 from torch_geometric.loader import NeighborLoader, DataLoader
 
-from Learn.Clean_SCGDA.models.base_model import BaseGDA
+from  models.base_model import BaseGDA
 
-from Learn.Clean_SCGDA.models.ours.opal.opal_base import OPALBase
-from Learn.Clean_SCGDA.utils.train_utils.mmd import MMD, Sinkhorn
+from  models.ours.opal.opal_base import OPALBase
+from  utils.train_utils.mmd import MMD, Sinkhorn
 
 
 

@@ -7,7 +7,7 @@ from torch.nn import Linear, Parameter
 from torch_geometric.nn import MessagePassing
 from torch_geometric.nn.conv.gcn_conv import gcn_norm
 
-from Learn.Clean_SCGDA.models.__layers.build_layer import build_activation
+from  models.__layers.build_layer import build_activation
 
 
 class GPRProp(MessagePassing):

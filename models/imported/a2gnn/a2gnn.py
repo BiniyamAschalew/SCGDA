@@ -1,5 +1,5 @@
 from pygda.models import A2GNN as A2GNN_imported
-from Learn.Clean_SCGDA.models.base_model import BaseGDA
+from  models.base_model import BaseGDA
 
 
 class A2GNN(BaseGDA):

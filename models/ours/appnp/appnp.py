@@ -1,6 +1,6 @@
-from Learn.Clean_SCGDA.models.baselines.gnn.gnn import GNN
+from  models.baselines.gnn.gnn import GNN
 
-from Learn.Clean_SCGDA.models.ours.appnp.appnp_base import APPNPBase
+from  models.ours.appnp.appnp_base import APPNPBase
 
 
 class APPNPModel(GNN):

@@ -8,10 +8,10 @@ import numpy as np
 
 from torch_geometric.loader import NeighborLoader, DataLoader
 
-from Learn.Clean_SCGDA.models.base_model import BaseGDA
-from Learn.Clean_SCGDA.models.baselines.grade.grade_base import GRADEBase
-from Learn.Clean_SCGDA.models.__layers.reverse_layer import GradReverse
-from Learn.Clean_SCGDA.utils.train_utils.mmd import MMD
+from  models.base_model import BaseGDA
+from  models.baselines.grade.grade_base import GRADEBase
+from  models.__layers.reverse_layer import GradReverse
+from  utils.train_utils.mmd import MMD
 
 
 class GRADE(BaseGDA):

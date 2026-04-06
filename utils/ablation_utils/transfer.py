@@ -4,8 +4,8 @@ import torch
 import torch.nn.functional as F
 from torch import nn
 
-from Learn.Clean_SCGDA.utils.expt_utils import set_seed
-from Learn.Clean_SCGDA.utils.ablation_utils.propagation import (
+from  utils.expt_utils import set_seed
+from  utils.ablation_utils.propagation import (
     WeightedPropagation,
     propagate_fixed_cheb_layers,
     propagate_weighted_layers,

@@ -23,18 +23,18 @@ from torch_geometric.transforms import OneHotDegree
 
 torch.set_num_threads(4)
 
-from Learn.Clean_SCGDA.data.build_dataset import get_dataset, get_max_degree
-from Learn.Clean_SCGDA.experiments.analysis.mmd_alignment_generalization_tracking.plotting import (
+from  data.build_dataset import get_dataset, get_max_degree
+from  experiments.analysis.mmd_alignment_generalization_tracking.plotting import (
     MODEL_LABELS,
     plot_dirichlet_energy,
     plot_performance,
     plot_snapshot_mmd,
 )
-from Learn.Clean_SCGDA.experiments.analysis.plain_gnn_cross_domain.log_plot import make_output_dir
-from Learn.Clean_SCGDA.utils.config_utils import load_config
-from Learn.Clean_SCGDA.utils.expt_utils import set_seed
-from Learn.Clean_SCGDA.utils.train_utils.metrics import BaseMetric
-from Learn.Clean_SCGDA.utils.train_utils.mmd import MMD
+from  experiments.analysis.plain_gnn_cross_domain.log_plot import make_output_dir
+from  utils.config_utils import load_config
+from  utils.expt_utils import set_seed
+from  utils.train_utils.metrics import BaseMetric
+from  utils.train_utils.mmd import MMD
 
 
 warnings.filterwarnings("ignore", category=DeprecationWarning)

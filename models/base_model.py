@@ -7,9 +7,9 @@ import torch
 from torch.nn import Linear, Sequential
 from torch_geometric.loader import NeighborLoader
 
-from Learn.Clean_SCGDA.utils.train_utils.metrics import BaseMetric
-from Learn.Clean_SCGDA.utils.expt_utils import WandbHandler
-from Learn.Clean_SCGDA.models.__layers.build_layer import build_activation
+from  utils.train_utils.metrics import BaseMetric
+from  utils.expt_utils import WandbHandler
+from  models.__layers.build_layer import build_activation
 
 class BaseGDA(ABC):
 

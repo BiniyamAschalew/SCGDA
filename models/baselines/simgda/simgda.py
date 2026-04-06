@@ -4,9 +4,9 @@ import torch.nn.functional as F
 from torch_geometric.loader import NeighborLoader
 from torch_geometric.nn import global_mean_pool
 
-from Learn.Clean_SCGDA.models.base_model import BaseGDA
-from Learn.Clean_SCGDA.models.baselines.gnn.gnn_base import GNNBase
-from Learn.Clean_SCGDA.utils.train_utils.mmd import MMD
+from  models.base_model import BaseGDA
+from  models.baselines.gnn.gnn_base import GNNBase
+from  utils.train_utils.mmd import MMD
 
 
 def _weighted_nll_loss(

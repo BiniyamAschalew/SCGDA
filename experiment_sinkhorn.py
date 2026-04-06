@@ -9,12 +9,12 @@ import pandas as pd
 import torch
 import torch.nn.functional as F
 
-from Learn.Clean_SCGDA.data.build_dataset import build_dataset
-from Learn.Clean_SCGDA.models.baselines.gnn.gnn_base import GNNBase
-from Learn.Clean_SCGDA.utils.config_utils import build_config
-from Learn.Clean_SCGDA.utils.expt_utils import set_seed
-from Learn.Clean_SCGDA.utils.train_utils.metrics import BaseMetric
-from Learn.Clean_SCGDA.utils.train_utils.mmd import MMD, Sinkhorn as SinkhornImported
+from  data.build_dataset import build_dataset
+from  models.baselines.gnn.gnn_base import GNNBase
+from  utils.config_utils import build_config
+from  utils.expt_utils import set_seed
+from  utils.train_utils.metrics import BaseMetric
+from  utils.train_utils.mmd import MMD, Sinkhorn as SinkhornImported
 
 
 def parse_args() -> argparse.Namespace:
