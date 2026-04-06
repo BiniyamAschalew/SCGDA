@@ -1,0 +1,7 @@
+hid_dim: 128
+lr: 0.0001
+weight_decay: 0.01
+epochs: 300
+dropout_ratio: 0.1
+pair_weight: 0.03
+step: 1

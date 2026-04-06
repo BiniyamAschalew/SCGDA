@@ -1,0 +1,6 @@
+dropout_ratio: 0.1
+epochs: 400
+hid_dim: 128
+lr: 0.01
+num_layers: 2
+weight_decay: 0.003

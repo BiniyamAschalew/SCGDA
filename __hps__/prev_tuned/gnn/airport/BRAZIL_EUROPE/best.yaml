@@ -1,0 +1,12 @@
+name: GNN
+gnn: gcn
+num_layers: 2
+hid_dim: 64
+dropout_ratio: 0.1
+activation: relu
+mode: node
+num_neigh: -1
+batch_size: 0
+optimizer: Adam
+lr: 0.001
+weight_decay: 0.01

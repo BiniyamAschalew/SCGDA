@@ -1,0 +1,10 @@
+# Blog — GDABench baselines only
+model:
+  lr: [0.0001, 0.0005, 0.001, 0.005]
+  weight_decay: [0.0005, 0.005, 0.01]
+  num_layers: [2, 3]
+  dropout_ratio: [0.1, 0.3, 0.5]
+  hid_dim: [128, 256]
+  epochs: [100, 200, 400]
+
+  # model specific hyperparmeters

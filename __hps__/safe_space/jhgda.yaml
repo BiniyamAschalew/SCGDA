@@ -1,0 +1,3 @@
+model:
+  num_layers: [2]
+  pool_ratio: [0.2]

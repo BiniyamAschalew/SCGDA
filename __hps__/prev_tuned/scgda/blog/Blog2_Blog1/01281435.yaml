@@ -1,0 +1,19 @@
+metric: micro_f1
+avg_score: 0.4602898550724637
+std_score: 0.0035143059863716546
+num_seeds: 3
+scores:
+- 0.46347826086956523
+- 0.4608695652173913
+- 0.45652173913043476
+scgda_params:
+  Ks: 2
+  Kt: 2
+  delta: 0.05
+dgsda_base:
+  dropout_ratio: 0.2
+  epochs: 300
+  hid_dim: 128
+  lr: 0.001
+  num_layers: 2
+  weight_decay: 0.01

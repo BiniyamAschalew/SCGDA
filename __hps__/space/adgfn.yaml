@@ -1,0 +1,22 @@
+model:
+  # AdaGCN backbone/training
+  # lr: [0.0005, 0.001, 0.004]
+  # weight_decay: [0.0, 0.001]
+  # dropout_ratio: [0.0, 0.3]
+
+  epochs: [100, 200]
+  domain_weight: [0.5, 1.0, 2.0]
+  # gp_weight: [1.0, 5.0, 10.0]
+  # adv_dim: [40, 64]
+
+  # Domain-specific learnable filter
+  mono_degree: [2, 3, 5, 8]
+  mono_filter_temperature: [0.5, 1.0, 2.0]
+  # mono_init: ["uniform", "adjacency", "identity"]
+  mono_init: ["adjacency"]
+
+  # Adversarial probe-filter matching
+  probe_mmd_weight: [0.1, 1.0]
+  adv_steps: [1, 3]
+  # adv_lr: [0.001, 0.003, 0.01]
+  adv_distribution_reg_weight: [0.0001, 0.001]

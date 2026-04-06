@@ -2,8 +2,10 @@
 
 __external__/
 __design__/
+__saved__/
+__docs__/
 # any folder with the form __*__ is ignored
-__*__/
+# __*__/
 wandb/
 
 *.csv

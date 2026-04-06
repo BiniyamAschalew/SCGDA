@@ -1,0 +1,24 @@
+name: OPAL
+gnn: gcn
+num_layers: 2
+hid_dim: 256
+dropout_ratio: 0.3
+dprate: 0.3
+activation: relu
+mode: node
+num_neigh: -1
+batch_size: 0
+optimizer: Adam
+lr: 0.005
+weight_decay: 0.005
+divergence: mmd
+K: 15
+cls_weight: 1.0
+beta: 0.5
+gamma: 0.01
+alpha: 1.0
+delta: 0.1
+epochs: 200
+from_pygda: 0
+tuned_params:
+- K

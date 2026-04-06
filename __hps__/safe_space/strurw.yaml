@@ -1,0 +1,4 @@
+model:
+  num_layers: [1, 2, 3]
+  dropout_ratio: [0.2, 0.4]
+  lamb: [0.6, 0.8]

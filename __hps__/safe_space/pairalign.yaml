@@ -1,0 +1,6 @@
+model:
+  num_layers: [2]
+  dropout_ratio: [0.0]
+  rw_lmda: [1]
+  ls_lambda: [3.0, 5.0]
+  lw_lambda: [0.01]

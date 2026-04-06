@@ -1,0 +1,10 @@
+model:
+  hid_dim: [64, 128]
+  num_layers: [1, 2]
+  lr: [0.005, 0.01]
+  weight_decay: [0.005]
+  epochs: [200, 800]
+  dropout_ratio: [0.5]
+  s_pnums: [0]
+  t_pnums: [5, 10]
+  weight: [5, 10]

@@ -1,0 +1,4 @@
+model:
+  num_layers: [1, 2, 3, 4, 5]
+  dropout_ratio: [0.2, 0.5]
+  weight: [0.002, 0.005, 0.01, 0.02]

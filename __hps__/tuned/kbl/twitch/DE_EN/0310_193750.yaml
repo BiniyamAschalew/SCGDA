@@ -1,0 +1,20 @@
+name: KBL
+gnn: gcn
+num_layers: 3
+hid_dim: 64
+dropout_ratio: 0.0
+activation: relu
+mode: node
+num_neigh: -1
+batch_size: 0
+optimizer: Adam
+lr: 0.001
+weight_decay: 0.01
+epochs: 200
+k_cross: 20
+k_within: 10
+tuned_params:
+- epochs
+- hid_dim
+- lr
+- weight_decay

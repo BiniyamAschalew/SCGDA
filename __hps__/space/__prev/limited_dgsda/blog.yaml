@@ -1,0 +1,13 @@
+# Blog — GDABench baselines only
+model:
+  # lr: [0.01, 0.005, 0.001, 0.0005]
+  # weight_decay: [0.0005, 0.005, 0.01]
+  # hid_dim: [128, 256]
+  # K: [5, 8, 10, 15]
+
+  epochs: [100]
+  alpha: [0.005, 0.01, 0.05, 0.1]
+  beta: [0.01, 0.05, 0.1, 0.5]
+  gamma: [0.005, 0.01, 0.05, 0.1]
+  # dropout_ratio: [0.3]
+  # dp_ratio: [0.3]

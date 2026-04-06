@@ -1,0 +1,9 @@
+dropout_ratio: 0.2
+epochs: 300
+hid_dim_vae: 128
+lambda_d: 0.5
+lambda_f: 0.0001
+lambda_r: 0.01
+lr: 0.0003
+nhid: 128
+weight_decay: 0.01

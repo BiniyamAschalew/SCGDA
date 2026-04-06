@@ -1,0 +1,8 @@
+model:
+  K: [5, 8, 10, 20]
+  alpha: [0.05]
+  beta: [0.1]
+  dp_ratio: [0.3]
+  dropout_ratio: [0.3]
+  gamma: [0.01]
+

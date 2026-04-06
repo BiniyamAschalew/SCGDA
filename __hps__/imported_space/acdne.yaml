@@ -1,0 +1,8 @@
+model:
+  hid_dim: [64, 128]
+  lr: [0.0001, 0.0003, 0.001]
+  weight_decay: [0.001, 0.01]
+  epochs: [200, 300]
+  dropout_ratio: [0.0, 0.1, 0.2, 0.5]
+  pair_weight: [0.0001, 0.01, 0.03, 0.1]
+  step: [1]

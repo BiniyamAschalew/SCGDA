@@ -1,0 +1,17 @@
+name: GRADE
+gnn: GCN
+num_layers: 3
+hid_dim: 128
+dropout_ratio: 0.3
+activation: relu
+mode: node
+s_pnums: 0
+t_pnums: 30
+adv: false
+weight: 0.1
+num_neigh: -1
+batch_size: 0
+optimizer: Adam
+lr: 0.003
+weight_decay: 0.0001
+disc: JS

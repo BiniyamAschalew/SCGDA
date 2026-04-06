@@ -1,0 +1,12 @@
+K: 20
+alpha: 1.0
+beta: 0.5
+gamma: 0.05
+
+dropout_ratio: 0.3
+epochs: 200
+
+hid_dim: 256
+lr: 0.005
+weight_decay: 0.005
+

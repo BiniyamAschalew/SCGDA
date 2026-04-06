@@ -1,0 +1,23 @@
+name: GRADE
+gnn: GCN
+num_layers: 4
+hid_dim: 64
+dropout_ratio: 0.2
+activation: relu
+mode: node
+s_pnums: 0
+t_pnums: 30
+adv: false
+weight: 0.01
+num_neigh: -1
+batch_size: 0
+optimizer: Adam
+lr: 0.005
+weight_decay: 0.01
+disc: C
+epochs: 200
+tuned_params:
+- epochs
+- hid_dim
+- lr
+- weight_decay

@@ -1,0 +1,21 @@
+name: ADAGCN
+gnn: gcn
+num_layers: 2
+hid_dim: 128
+dropout_ratio: 0.3
+activation: relu
+mode: node
+num_neigh: -1
+batch_size: 0
+optimizer: Adam
+lr: 0.0005
+weight_decay: 0.001
+epochs: 300
+domain_weight: 0.1
+gp_weight: 5.0
+adv_dim: 40
+tuned_params:
+- dropout_ratio
+- epochs
+- lr
+- weight_decay

@@ -1,0 +1,7 @@
+domain_weight: 0.1
+dropout_ratio: 0.4
+epochs: 800
+lr: 0.001
+nhid: 300
+num_layers: 2
+weight_decay: 0.001

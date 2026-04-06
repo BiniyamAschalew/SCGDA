@@ -1,0 +1,9 @@
+dropout_ratio: 0.5
+epochs: 200
+lr: 0.005
+nhid: 128
+num_layers: 1
+s_pnums: 0
+t_pnums: 5
+weight: 5
+weight_decay: 0.005

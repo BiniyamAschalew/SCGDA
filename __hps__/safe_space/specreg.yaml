@@ -1,0 +1,6 @@
+model:
+  num_layers: [4, 5]
+  dropout_ratio: [0.1]
+  gamma_adv: [0.1]
+  gamma_smooth: [0.001]
+  gamma_mfr: [0.001]

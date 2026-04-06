@@ -1,0 +1,14 @@
+name: SimGDA
+gnn: gcn
+num_layers: 1
+hid_dim: 128
+dropout_ratio: 0.1
+activation: relu
+mode: node
+num_neigh: -1
+batch_size: 0
+optimizer: Adam
+lr: 0.003
+weight_decay: 0.0001
+mmd: true
+mmd_weight: 0.1

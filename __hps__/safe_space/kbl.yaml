@@ -1,0 +1,4 @@
+model:
+  num_layers: [3]
+  k_cross: [20]
+  k_within: [10]

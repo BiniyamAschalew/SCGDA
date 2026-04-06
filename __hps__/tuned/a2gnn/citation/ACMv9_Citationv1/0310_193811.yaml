@@ -1,0 +1,23 @@
+name: A2GNN
+gnn: Prop
+num_layers: 1
+hid_dim: 128
+dropout_ratio: 0.5
+activation: relu
+mode: node
+s_pnums: 0
+t_pnums: 5
+adv: false
+weight: 5
+loss: GNN_Loss
+num_neigh: -1
+batch_size: 0
+optimizer: Adam
+lr: 0.005
+weight_decay: 0.001
+epochs: 400
+tuned_params:
+- epochs
+- hid_dim
+- lr
+- weight_decay

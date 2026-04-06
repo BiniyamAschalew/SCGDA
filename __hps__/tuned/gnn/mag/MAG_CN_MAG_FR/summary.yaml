@@ -1,0 +1,11 @@
+metric: micro_f1
+score: 0.5263025995033376
+seeds:
+- 0
+- 1
+- 2
+params:
+  lr: 0.005
+  weight_decay: 0.01
+  num_layers: 4
+  dropout_ratio: 0.5

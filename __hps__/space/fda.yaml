@@ -1,0 +1,21 @@
+model:
+  # general optimizer/training
+  lr: [0.0001, 0.0005, 0.001, 0.005]
+  weight_decay: [0.0001, 0.001, 0.01]
+  dropout_ratio: [0.1, 0.3]
+  epochs: [100, 200, 300]
+
+  # filter/order settings
+  filter: ["cheb", "mono"]
+  K: [3, 5, 8, 15]
+  nonnegative_filter_params: [false]
+
+  # FDA alignment-specific weights
+  mmd_weight: [0.0, 0.1, 0.2]
+  probe_mmd_weight: [0.25, 0.5, 1.0]
+  probe_sem_weight: [0.0, 0.5, 1.0]
+  probe_sem_class_conditional: [true, false]
+
+  # MMD estimator controls
+  mmd_sampling_num: [1000]
+  mmd_times: [3]
