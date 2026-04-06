@@ -7,10 +7,10 @@ import numpy as np
 
 from torch_geometric.loader import NeighborLoader, DataLoader
 
-from models.base_model import BaseGDA
+from Learn.Clean_SCGDA.models.base_model import BaseGDA
 
-from models.ours.opal.opal_base import OPALBase
-from utils.train_utils.mmd import MMD, Sinkhorn
+from Learn.Clean_SCGDA.models.ours.opal.opal_base import OPALBase
+from Learn.Clean_SCGDA.utils.train_utils.mmd import MMD, Sinkhorn
 from tqdm import tqdm
 
 
@@ -236,6 +236,9 @@ class OPAL(BaseGDA):
 
         if self.verbose >= 1:
             print(f"== Best Model from Epoch {self.best_epoch+1:03d} with Val Micro-F1: {self.best_val:.4f} ==")
+            print(f"source params: {self.opal.src_filter.coef.data.cpu().numpy().round(4)}")
+            print(f"target params: {self.opal.tgt_filter.coef.data.cpu().numpy().round(4)}")
+            print(f"cls params: {self.opal.cls_filter.coef.data.cpu().numpy().round(4)}")
 
         self.finish()
 

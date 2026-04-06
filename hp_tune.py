@@ -427,8 +427,8 @@ def main() -> None:
         )
         return
 
-    from run import run as run_experiment
-    from utils.config_utils import build_config
+    from Learn.Clean_SCGDA.run import run as run_experiment
+    from Learn.Clean_SCGDA.utils.config_utils import build_config
 
     process_start = time.strftime("%Y-%m-%d %H:%M:%S")
     processed = 0

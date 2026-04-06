@@ -16,10 +16,10 @@ import torch
 import torch.nn.functional as F
 from tqdm import tqdm
 
-from models.base_model import BaseGDA
-from models.ours.dlite.cheb_filter import ChebFilter
-from models.ours.dlite.dlite_encoder import DLITEncoder
-from utils.train_utils.mmd import MMD, mmd_kernel
+from Learn.Clean_SCGDA.models.base_model import BaseGDA
+from Learn.Clean_SCGDA.models.ours.dlite.cheb_filter import ChebFilter
+from Learn.Clean_SCGDA.models.ours.dlite.dlite_encoder import DLITEncoder
+from Learn.Clean_SCGDA.utils.train_utils.mmd import MMD, mmd_kernel
 
 
 class DLIT(BaseGDA):

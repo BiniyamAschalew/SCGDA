@@ -1,5 +1,5 @@
 from pygda.models import GRADE as GRADE_imported
-from models.base_model import BaseGDA
+from Learn.Clean_SCGDA.models.base_model import BaseGDA
 
 class GRADE(BaseGDA):
     def __init__(self, config):

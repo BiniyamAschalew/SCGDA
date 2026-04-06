@@ -8,9 +8,9 @@ import numpy as np
 
 from torch_geometric.loader import NeighborLoader, DataLoader
 
-from models.base_model import BaseGDA
-from models.ours.dgf.dgf_base import DGFBase
-from utils.train_utils.mmd import MMD
+from Learn.Clean_SCGDA.models.base_model import BaseGDA
+from Learn.Clean_SCGDA.models.ours.dgf.dgf_base import DGFBase
+from Learn.Clean_SCGDA.utils.train_utils.mmd import MMD
 
 
 class LearnableProbeDistribution(nn.Module):

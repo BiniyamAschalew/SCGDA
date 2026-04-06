@@ -1,5 +1,5 @@
 from pygda.models import TDSS as TDSS_imported
-from models.base_model import BaseGDA
+from Learn.Clean_SCGDA.models.base_model import BaseGDA
 
 class TDSS(BaseGDA):
     def __init__(self, config):

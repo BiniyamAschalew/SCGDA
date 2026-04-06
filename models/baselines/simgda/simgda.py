@@ -4,9 +4,34 @@ import torch.nn.functional as F
 from torch_geometric.loader import NeighborLoader
 from torch_geometric.nn import global_mean_pool
 
-from models.base_model import BaseGDA
-from models.baselines.gnn.gnn_base import GNNBase
-from utils.train_utils.mmd import MMD
+from Learn.Clean_SCGDA.models.base_model import BaseGDA
+from Learn.Clean_SCGDA.models.baselines.gnn.gnn_base import GNNBase
+from Learn.Clean_SCGDA.utils.train_utils.mmd import MMD
+
+
+def _weighted_nll_loss(
+    source_logits,
+    source_labels,
+    source_mask,
+    target_logits,
+    target_labels,
+    target_mask,
+    oracle: bool,
+):
+    device = source_logits.device
+    source_count = int(source_mask.sum().item())
+    target_count = int(target_mask.sum().item()) if oracle else 0
+    total_count = source_count + target_count
+
+    if total_count <= 0:
+        return torch.zeros((), device=device, dtype=source_logits.dtype)
+
+    loss = torch.zeros((), device=device, dtype=source_logits.dtype)
+    if source_count > 0:
+        loss = loss + F.nll_loss(source_logits[source_mask], source_labels[source_mask]) * source_count
+    if oracle and target_count > 0:
+        loss = loss + F.nll_loss(target_logits[target_mask], target_labels[target_mask]) * target_count
+    return loss / float(total_count)
 
 
 class SimGDA(BaseGDA):
@@ -29,7 +54,6 @@ class SimGDA(BaseGDA):
         # self.gamma = config["model"]["gamma"]
 
         self.mmd_weight = config["model"]["mmd_weight"]
-        self.mmd_weight = 0.0
 
         self.mode = config["model"]["mode"]
         self.simgda = None
@@ -40,7 +64,7 @@ class SimGDA(BaseGDA):
         return model
 
     
-    def forward_model(self, source_data, target_data):
+    def forward_model(self, source_data, target_data, use_mask=False, oracle=False):
 
         # source_logits = self.gnn(source_data.x, source_data.edge_index)
         # target_logits = self.gnn(target_data.x, target_data.edge_index)
@@ -54,15 +78,26 @@ class SimGDA(BaseGDA):
         source_logits = F.log_softmax(source_logits, dim=1)
         target_logits = F.log_softmax(target_logits, dim=1)
 
-        loss = F.nll_loss(source_logits, source_data.y)
-        mmd_loss = MMD(source_features, target_features).to(self.device)
+        source_mask = self.get_mask(source_data, use_mask=use_mask, mask_name="train_mask")
+        target_mask = self.get_mask(target_data, use_mask=use_mask, mask_name="train_mask")
+
+        loss = _weighted_nll_loss(
+            source_logits,
+            source_data.y,
+            source_mask,
+            target_logits,
+            target_data.y,
+            target_mask,
+            oracle=oracle,
+        )
+        mmd_loss = MMD(source_features[source_mask], target_features[target_mask]).to(self.device)
         loss += self.mmd_weight * mmd_loss
 
 
         return loss, source_logits, target_logits
 
 
-    def fit(self, source_data, target_data):
+    def fit(self, source_data, target_data, use_mask=False, oracle=False):
 
 
         source_loader = self.get_loader(source_data)
@@ -87,33 +122,31 @@ class SimGDA(BaseGDA):
             for idx, (sampled_source_data, sampled_target_data) in enumerate(zip(source_loader, target_loader)):
                 self.simgda.train()
                 
-                loss, source_logits, target_logits = self.forward_model(sampled_source_data, sampled_target_data)
+                loss, source_logits, target_logits = self.forward_model(
+                    sampled_source_data,
+                    sampled_target_data,
+                    use_mask=use_mask,
+                    oracle=oracle,
+                )
                 epoch_loss += loss.item()
 
                 optimizer.zero_grad()
                 loss.backward()
                 optimizer.step()
 
-                source_logits, source_labels = self.predict(sampled_source_data)
-                epoch_source_logits = torch.cat((epoch_source_logits, source_logits))
-                epoch_source_labels = torch.cat((epoch_source_labels, source_labels))
+                train_source_logits, train_source_labels, train_source_mask = self.mask_logits_and_labels(
+                    source_logits,
+                    sampled_source_data,
+                    use_mask=use_mask,
+                    mask_name="train_mask",
+                )
+                if int(train_source_mask.sum().item()) > 0:
+                    epoch_source_logits = torch.cat((epoch_source_logits, train_source_logits))
+                    epoch_source_labels = torch.cat((epoch_source_labels, train_source_labels))
             
-            epoch_source_preds = epoch_source_logits.argmax(dim=1)
             train_results = self.metrics(epoch_source_logits, epoch_source_labels)
 
             self.log(epoch, epoch_loss, train_results)
-
-        #     early_stop = self.early_stop_check(self.simgda, result=train_results, epoch=epoch)
-
-        #     if early_stop == "stop":
-        #         break
-        #     elif early_stop == "save":
-        #         torch.save(self.simgda.state_dict(), self.best_model_dir)
-        # self.simgda.load_state_dict(torch.load(self.best_model_dir))
-
-        # after training, load the best model
-        if self.verbose >= 1:
-            print(f"== Best Model from Epoch {self.best_epoch+1:03d} with Val Micro-F1: {self.best_val:.4f} ==")
 
         self.finish()
 
@@ -121,10 +154,16 @@ class SimGDA(BaseGDA):
     def process_graph(self, data):
         pass
 
-    def predict(self, data):
+    def predict(self, data, use_mask=False):
         self.simgda.eval()
 
         with torch.no_grad():
             logits = self.simgda(data.x, data.edge_index)
 
-        return logits, data.y
+        logits, labels, _ = self.mask_logits_and_labels(
+            logits,
+            data,
+            use_mask=use_mask,
+            mask_name="val_mask",
+        )
+        return logits, labels

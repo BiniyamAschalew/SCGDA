@@ -1,0 +1,36 @@
+name: "PairAlign"
+gnn: "GS"
+
+num_layers: 2
+hid_dim: 128
+dropout_ratio: 0.0
+
+activation: "relu"
+mode: "node"
+
+num_neigh: -1
+batch_size: 0
+
+optimizer: "Adam"
+lr: 0.001
+weight_decay: 0.0001
+epochs: 200
+
+# pairalign specific params
+cls_dim: 128
+cls_layers: 2
+backbone: "GS"
+pooling: "mean"
+ew_type: "pseudobeta"
+rw_lmda: 1.0
+ls_lambda: 1.0
+lw_lambda: 0.005
+label_rw: False
+edge_rw: False
+ew_start: 0
+ew_freq: 10
+lw_start: 0
+lw_freq: 10
+gamma_reg: 0.0001
+weight_CE_src: False
+bn: False

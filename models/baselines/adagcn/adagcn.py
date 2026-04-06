@@ -9,8 +9,33 @@ from torch_geometric.loader import NeighborLoader, DataLoader
 from itertools import chain
 
 
-from models.base_model import BaseGDA
-from models.baselines.adagcn.adagcn_base import AdaGCNBase
+from Learn.Clean_SCGDA.models.base_model import BaseGDA
+from Learn.Clean_SCGDA.models.baselines.adagcn.adagcn_base import AdaGCNBase
+
+
+def _weighted_ce_loss(
+    source_logits,
+    source_labels,
+    source_mask,
+    target_logits,
+    target_labels,
+    target_mask,
+    oracle: bool,
+):
+    device = source_logits.device
+    source_count = int(source_mask.sum().item())
+    target_count = int(target_mask.sum().item()) if oracle else 0
+    total_count = source_count + target_count
+
+    if total_count <= 0:
+        return torch.zeros((), device=device, dtype=source_logits.dtype)
+
+    loss = torch.zeros((), device=device, dtype=source_logits.dtype)
+    if source_count > 0:
+        loss = loss + F.cross_entropy(source_logits[source_mask], source_labels[source_mask]) * source_count
+    if oracle and target_count > 0:
+        loss = loss + F.cross_entropy(target_logits[target_mask], target_labels[target_mask]) * target_count
+    return loss / float(total_count)
 
 
 
@@ -64,7 +89,7 @@ class AdaGCN(BaseGDA):
             mode=self.mode,
         ).to(self.device)
 
-    def forward_model(self, source_data, target_data):
+    def forward_model(self, source_data, target_data, use_mask=False, oracle=False):
         """Notes
         -----
         Performs adversarial training with:
@@ -77,6 +102,10 @@ class AdaGCN(BaseGDA):
         for _ in range(10):
             encoded_source = self.adagcn(source_data)
             encoded_target = self.adagcn(target_data)
+            source_mask = self.get_mask(source_data, use_mask=use_mask, mask_name="train_mask")
+            target_mask = self.get_mask(target_data, use_mask=use_mask, mask_name="train_mask")
+            encoded_source = encoded_source[source_mask]
+            encoded_target = encoded_target[target_mask]
 
             gp_loss = self.gradient_penalty(encoded_source, encoded_target)
 
@@ -94,18 +123,31 @@ class AdaGCN(BaseGDA):
         encoded_source = self.adagcn(source_data)
         encoded_target = self.adagcn(target_data)
         source_logits = self.adagcn.cls_model(encoded_source)
-        cls_loss = self.adagcn.loss_func(source_logits, source_data.y)
+        target_logits = self.adagcn.cls_model(encoded_target)
+
+        source_mask = self.get_mask(source_data, use_mask=use_mask, mask_name="train_mask")
+        target_mask = self.get_mask(target_data, use_mask=use_mask, mask_name="train_mask")
+        cls_loss = _weighted_ce_loss(
+            source_logits,
+            source_data.y,
+            source_mask,
+            target_logits,
+            target_data.y,
+            target_mask,
+            oracle=oracle,
+        )
+
+        encoded_source = encoded_source[source_mask]
+        encoded_target = encoded_target[target_mask]
         dis_s = torch.mean(self.discriminator(encoded_source).reshape(-1))
         dis_t = torch.mean(self.discriminator(encoded_target).reshape(-1))
         dis_loss = torch.abs(dis_s - dis_t)
-
-        target_logits = self.adagcn.cls_model(encoded_target)
 
         loss = cls_loss + dis_loss * self.domain_weight
 
         return loss, source_logits, target_logits
 
-    def fit(self, source_data, target_data):
+    def fit(self, source_data, target_data, use_mask=False, oracle=False):
         """
         Notes
         -----
@@ -187,22 +229,31 @@ class AdaGCN(BaseGDA):
                 sampled_source_data = sampled_source_data.to(self.device)
                 sampled_target_data = sampled_target_data.to(self.device)
                 
-                loss, source_logits, target_logits = self.forward_model(sampled_source_data, sampled_target_data)
+                loss, source_logits, target_logits = self.forward_model(
+                    sampled_source_data,
+                    sampled_target_data,
+                    use_mask=use_mask,
+                    oracle=oracle,
+                )
                 epoch_loss += loss.item()
 
                 optimizer.zero_grad()
                 loss.backward()
                 optimizer.step()
 
-                if idx == 0:
-                    epoch_source_logits, epoch_source_labels = source_logits, sampled_source_data.y
-                else:
-                    source_logits, source_labels = source_logits, sampled_source_data.y
-                    epoch_source_logits = torch.cat((epoch_source_logits, source_logits))
-                    epoch_source_labels = torch.cat((epoch_source_labels, source_labels))
+                train_source_logits, train_source_labels, train_source_mask = self.mask_logits_and_labels(
+                    source_logits,
+                    sampled_source_data,
+                    use_mask=use_mask,
+                    mask_name="train_mask",
+                )
+                if int(train_source_mask.sum().item()) > 0:
+                    if idx == 0 or epoch_source_logits is None:
+                        epoch_source_logits, epoch_source_labels = train_source_logits, train_source_labels
+                    else:
+                        epoch_source_logits = torch.cat((epoch_source_logits, train_source_logits))
+                        epoch_source_labels = torch.cat((epoch_source_labels, train_source_labels))
             
-            epoch_source_preds = epoch_source_logits.argmax(dim=1)
-            # micro_f1_score = eval_micro_f1(epoch_source_labels, epoch_source_preds)
             train_results = self.metrics(epoch_source_logits, epoch_source_labels)
 
             self.log(epoch, epoch_loss, train_results)
@@ -211,7 +262,7 @@ class AdaGCN(BaseGDA):
     
 
 
-    def predict(self, data, source=False):
+    def predict(self, data, source=False, use_mask=False):
         """
         Make predictions on given data.
 
@@ -239,33 +290,17 @@ class AdaGCN(BaseGDA):
         """
         self.adagcn.eval()
 
-        if source:
-            for idx, sampled_data in enumerate(self.source_loader):
-                sampled_data = sampled_data.to(self.device)
-                with torch.no_grad():
-                    encoded_data = self.adagcn(sampled_data)
-                    logits = self.adagcn.cls_model(encoded_data)
+        data = data.to(self.device)
+        with torch.no_grad():
+            encoded_data = self.adagcn(data)
+            logits = self.adagcn.cls_model(encoded_data)
 
-                    if idx == 0:
-                        logits, labels = logits, sampled_data.y
-                    else:
-                        sampled_logits, sampled_labels = logits, sampled_data.y
-                        logits = torch.cat((logits, sampled_logits))
-                        labels = torch.cat((labels, sampled_labels))
-        else:
-            for idx, sampled_data in enumerate(self.target_loader):
-                sampled_data = sampled_data.to(self.device)
-                with torch.no_grad():
-                    encoded_data = self.adagcn(sampled_data)
-                    logits = self.adagcn.cls_model(encoded_data)
-
-                    if idx == 0:
-                        logits, labels = logits, sampled_data.y
-                    else:
-                        sampled_logits, sampled_labels = logits, sampled_data.y
-                        logits = torch.cat((logits, sampled_logits))
-                        labels = torch.cat((labels, sampled_labels))
-
+        logits, labels, _ = self.mask_logits_and_labels(
+            logits,
+            data,
+            use_mask=use_mask,
+            mask_name="val_mask",
+        )
         return logits, labels
 
     def gradient_penalty(self, encoded_source, encoded_target):

@@ -1,0 +1,35 @@
+# BDlite: Bernstein DLITE-style dual-filter adaptation
+name: "OPAL"
+gnn: "gcn"
+
+num_layers: 2
+hid_dim: 256
+dropout_ratio: 0.3
+dprate: 0.3
+
+activation: "relu"
+mode: "node"
+
+# for each hop, the number of neighbors to sample
+num_neigh: -1
+batch_size: 0
+
+optimizer: "Adam"
+lr: 0.005
+weight_decay: 0.005
+
+divergence: "mmd"
+
+# filter polynomial order
+K: 15
+
+
+# loss weights
+cls_weight: 1.0
+beta: 0.5
+gamma: 0.05
+alpha: 1.0
+delta: 0.1
+
+
+epochs: 200

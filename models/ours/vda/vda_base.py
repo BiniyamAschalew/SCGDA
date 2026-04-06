@@ -1,7 +1,7 @@
 from torch import nn
 import torch
 
-from models.__filters.build_filter import build_filter
+from Learn.Clean_SCGDA.models.__filters.build_filter import build_filter
 
 
 class VDABase(nn.Module):

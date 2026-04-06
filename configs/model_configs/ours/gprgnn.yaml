@@ -1,0 +1,26 @@
+name: "gprgnn"
+gnn: "gprgnn"
+
+num_layers: 2
+hid_dim: 64
+dropout_ratio: 0.5
+
+activation: "relu"
+mode: "node"
+
+K: 10
+alpha: 0.1
+Init: "PPR"
+Gamma:
+dprate: 0.0
+
+num_neigh: -1
+batch_size: 0
+
+optimizer: "Adam"
+lr: 0.01
+weight_decay: 0.0005
+epochs: 200
+
+use_mask: True
+

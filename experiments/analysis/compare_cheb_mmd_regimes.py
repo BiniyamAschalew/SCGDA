@@ -13,12 +13,12 @@ ROOT_DIR = Path(__file__).resolve().parents[2]
 if str(ROOT_DIR) not in sys.path:
     sys.path.insert(0, str(ROOT_DIR))
 
-from data.build_dataset import build_dataset
-from models.ours.test.test_base import TestBase
-from utils.config_utils import build_config
-from utils.expt_utils import set_seed
-from utils.filter_utils import cheb_to_monomial, tensor_to_float_list
-from utils.train_utils.mmd import MMD
+from Learn.Clean_SCGDA.data.build_dataset import build_dataset
+from Learn.Clean_SCGDA.models.ours.test.test_base import TestBase
+from Learn.Clean_SCGDA.utils.config_utils import build_config
+from Learn.Clean_SCGDA.utils.expt_utils import set_seed
+from Learn.Clean_SCGDA.utils.filter_utils import cheb_to_monomial, tensor_to_float_list
+from Learn.Clean_SCGDA.utils.train_utils.mmd import MMD
 
 
 def _edge_discriminability_loss(z, edge_index, num_samples=2048, margin=1.0):

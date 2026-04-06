@@ -6,16 +6,16 @@ import torch
 import torch.nn.functional as F
 from torch import nn
 
-from models.__components.chebprop import ChebProp
-from utils.ablation_utils.alignment import build_struct_positive_edges, edge_bpr_structure_loss
-from utils.ablation_utils.common import as_float, load_pair, sample_idx
-from utils.ablation_utils.propagation import (
+from Learn.Clean_SCGDA.models.__components.chebprop import ChebProp
+from Learn.Clean_SCGDA.utils.ablation_utils.alignment import build_struct_positive_edges, edge_bpr_structure_loss
+from Learn.Clean_SCGDA.utils.ablation_utils.common import as_float, load_pair, sample_idx
+from Learn.Clean_SCGDA.utils.ablation_utils.propagation import (
     Propagation,
     apply_cheb_once,
     propagate_layers,
     uniform_cheb_temp,
 )
-from utils.filter_utils import cheb_to_monomial, mmd_rbf
+from Learn.Clean_SCGDA.utils.filter_utils import cheb_to_monomial, mmd_rbf
 
 
 def load_scenario_graphs(dataset: str, source: str, target: str, cfg: dict):

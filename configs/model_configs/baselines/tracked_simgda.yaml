@@ -1,0 +1,23 @@
+name: "tracked_simgda"
+gnn: "gcn"
+
+num_layers: 2
+hid_dim: 64
+dropout_ratio: 0.0
+
+activation: "relu"
+
+mode: "node"
+
+num_neigh: -1
+batch_size: 0
+
+optimizer: "Adam"
+lr: 0.01
+weight_decay: 0.001
+epochs: 200
+
+mmd: True
+mmd_weight: 0.1
+
+use_mask: True

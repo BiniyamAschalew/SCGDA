@@ -1,5 +1,5 @@
 from pygda.models import StruRW as StruRWImported
-from models.base_model import BaseGDA
+from Learn.Clean_SCGDA.models.base_model import BaseGDA
 
 class StruRW(BaseGDA):
     def __init__(self, config):

@@ -1,0 +1,32 @@
+
+# The hyperparameter is difference only for A-> C setting
+name: "GRADE"
+gnn: "GCN"
+num_layers: 2
+
+hid_dim: 64
+dropout_ratio: 0
+
+# filename: "gnn_test.txt"
+activation: "relu"
+mode: "node"
+
+s_pnums: 0
+t_pnums: 30
+
+
+adv: False
+# alignment weight (isn't 10 too much?)
+weight: 0.1
+
+
+# for each hop, the number of neighbors to sample
+num_neigh: -1 ### need to find the best number of neighbors
+batch_size: 0 # already set to zero
+
+optimizer: "Adam"
+lr: 0.001 # in the pygda implementation it was 0.004 (performance micro inc macro dec)
+weight_decay: 0.01
+
+# GRADE specific params
+disc : "C"

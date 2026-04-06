@@ -8,9 +8,9 @@ from pathlib import Path
 
 import numpy as np
 
-from prob_form.plot import plot_embedding_evolution, plot_raw_features, plot_training_curves
-from prob_form.synthetic_data import generate_synthetic_da_data, save_synthetic_data
-from prob_form.train import TrainingConfig, combine_histories, run_training
+from Learn.Clean_SCGDA.experiments.motivation.prob_form.plot import plot_embedding_evolution, plot_raw_features, plot_training_curves
+from Learn.Clean_SCGDA.experiments.motivation.prob_form.synthetic_data import generate_synthetic_da_data, save_synthetic_data
+from Learn.Clean_SCGDA.experiments.motivation.prob_form.train import TrainingConfig, combine_histories, run_training
 
 
 def parse_args() -> argparse.Namespace:

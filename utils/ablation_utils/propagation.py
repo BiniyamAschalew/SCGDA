@@ -2,7 +2,7 @@ import torch
 from torch_geometric.nn.conv import MessagePassing
 from torch_geometric.utils import add_self_loops, degree
 
-from models.__components.chebprop import ChebProp
+from Learn.Clean_SCGDA.models.__components.chebprop import ChebProp
 
 
 class Propagation(MessagePassing):

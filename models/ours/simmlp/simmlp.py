@@ -2,9 +2,9 @@ import time
 import torch
 import torch.nn.functional as F
 
-from models.base_model import BaseGDA
-from models.baselines.mlp.mlp_base import MLPBase
-from utils.train_utils.mmd import MMD
+from Learn.Clean_SCGDA.models.base_model import BaseGDA
+from Learn.Clean_SCGDA.models.baselines.mlp.mlp_base import MLPBase
+from Learn.Clean_SCGDA.utils.train_utils.mmd import MMD
 
 class SimMLP(BaseGDA):
 

@@ -1,7 +1,7 @@
 """We create filter propagators as class"""
-from models.__filters.bern import BernProp
-from models.__filters.cheb import ChebProp
-from models.__filters.mono import MonoProp
+from Learn.Clean_SCGDA.models.__filters.bern import BernProp
+from Learn.Clean_SCGDA.models.__filters.cheb import ChebProp
+from Learn.Clean_SCGDA.models.__filters.mono import MonoProp
 
 
 def build_filter(filter_name: str):

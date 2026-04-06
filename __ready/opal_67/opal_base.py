@@ -2,7 +2,7 @@ from torch import nn
 import torch.nn.functional as F
 
 # from models.__components.bernprop import BernProp
-from models.ours.opal.chebprop import ChebProp
+from Learn.Clean_SCGDA.models.ours.opal.chebprop import ChebProp
 
 
 

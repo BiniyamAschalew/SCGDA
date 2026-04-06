@@ -1,0 +1,38 @@
+name: "FAN"
+gnn: "filter_mono"
+num_layers: 2
+
+hid_dim: 64
+dropout_ratio: 0.1
+activation: "relu"
+mode: "node"
+
+s_pnums: 0
+t_pnums: 30
+cls_pnums: 1
+
+adv: false
+weight: 0.1
+
+loss: "GNN_Loss"
+
+num_neigh: -1
+batch_size: 0
+
+optimizer: "Adam"
+lr: 0.01
+weight_decay: 0.005
+epochs: 200
+
+filter_temperature: 1.0
+filter_init_scale: 6.0
+filter_l1_weight: 0.0
+
+probe_mmd_weight: 1.0
+probe_sampling_num: 1000
+probe_mmd_times: 5
+
+adv_steps: 1
+adv_lr: 0.003
+adv_weight_decay: 0.0
+adv_distribution_reg_weight: 0.001

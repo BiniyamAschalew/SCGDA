@@ -1,0 +1,33 @@
+# DLIT: single shared-filter domain adaptation
+name: "DLIT"
+gnn: "gcn"
+
+num_layers: 2
+hid_dim: 64
+dropout_ratio: 0.
+
+activation: "relu"
+mode: "node"
+
+# for each hop, the number of neighbors to sample
+num_neigh: -1
+batch_size: 0
+
+optimizer: "Adam"
+lr: 4e-3
+weight_decay: 0.0
+
+# shared Bernstein filter depth
+K: 8
+
+# loss weights
+beta: 0.5                  # feature MMD (first layer)
+alpha: 0.05                # filter MMD on IID Gaussian inputs
+gamma: 0.05                # target entropy minimization
+cls_weight: 1.0            # source classification
+
+# IID Gaussian for filter MMD
+iid_mean: 1.0
+iid_std: 0.25
+
+epochs: 100

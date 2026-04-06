@@ -73,13 +73,18 @@
 \begin{abstract}
 
 
-Unsupervised graph domain adaptation (UGDA) is challenging because distribution shift affects not only node features but also graph propagation itself. Existing methods mainly align embeddings, modify topology, or regularize spectral statistics, but these mechanisms do not directly prevent structure-induced shift from reappearing after each message-passing step. We propose \textbf{\model}, a filter-centric UGDA framework that aligns \emph{realized graph filters} across domains. \model\ learns a shared feature encoder together with domain-specific graph filters that are reused across layers. The filters are aligned through the response laws they induce on a reference distribution that approximates the feature distribution. Theoretically, we extend Optimal-Transport-based domain adaptation bounds to propagated representations and show that target risk is controlled by a feature-alignment term together with an operator-response term that captures mismatch between the realized propagation operators. Practically, \model\ proposes a filter-response alignment paradigm along with smoothness constraints that arise directly from the theory. The resulting model aligns both semantic representations and structural propagation behavior without graph matching or expensive eigenvalue decomposition, while showing competitive performance with state-of-the-art UGDA baselines.
+Unsupervised graph domain adaptation (UGDA) is challenging because distribution shift affects not only node features but also the graph propagation mechanism itself. Existing methods mainly align node embeddings, modify topology, or regularize spectral statistics, but these mechanisms do not directly prevent structure-induced shift from reappearing after each message-passing step. We propose \textbf{\model}, a filter-centric UGDA framework that aligns \emph{realized graph filters} across domains. \model\ learns a shared feature encoder together with domain-specific graph filters that are reused across layers. The filters are aligned through the response laws they induce on a reference distribution that approximates the feature distribution. Theoretically, we extend Optimal-Transport-based domain adaptation bounds to propagated representations and show that target risk is controlled by a feature-alignment term together with an operator-response term that captures mismatch between the realized propagation operators. Practically, \model\ proposes a filter-response alignment paradigm along with smoothness constraints that arise directly from the theory. The resulting model aligns both semantic representations and structural propagation behavior without graph matching or expensive eigenvalue decomposition, while showing competitive performance with state-of-the-art UGDA baselines.
 \end{abstract}
+
+% We analyze the effect of the effect of the different components in the shift bound and empirically show the following properties
+% 1) Alignment is beneficial only done up to a certain value ~ often determined by the in-domain distribution shift. Above this value, further alignment often hurts performance. Meaning that there is part of the shift that is beneficial for target generalizability and part that is harmful.
+% 2) We show that the operator-response term is more important than the feature-alignment term with respect to the effect it has on the target performance. The MMD discrepancy increment introduced by the message passing at one step is often more than 5x the shift introduced by the feature distribution shift. 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \section{Introduction}
 
-Graph-structured data arise in a wide range of domains, including citation networks, molecular structures, recommender systems, and social networks. Graph Neural Networks (GNNs) have become a standard framework for learning from such relational data by combining node attributes with the underlying graph topology through message passing \cite{gcn,recsys,graph_tasks1}. This paradigm enables models to exploit dependencies between entities and has led to strong performance across many graph-based tasks. However, most GNN models require substantial labeled data to generalize effectively. In many real-world settings, obtaining labels is expensive or impractical. For instance, labeling molecular properties often requires costly simulations or laboratory experiments \cite{material_science,drug_discovery}. These limitations motivate methods that can transfer knowledge across related graph domains.
+Graph-structured data arise in a wide range of domains, including citation networks, molecular structures, recommender systems, and social networks. Graph Neural Networks (GNNs) have become the defacto framework for learning from such relational data by combining node attributes with the underlying graph topology through message passing \cite{recsys,graph_tasks1,graph_tasks2,gcn}. This paradigm enables models to exploit dependencies betweein entities and has led to strong performance across many graph-based tasks. However, most GNN models require substantial labeled data to generalize effectively. In many real-world settings, obtaining labels is expensive or impractical. For instance, labeling molecular properties often requires costly simulations or laboratory experiments \cite{material_science,drug_discovery}. These limitations motivate methods that can transfer knowledge across related graph domains.
+
 
 Domain adaptation addresses this challenge by transferring predictive knowledge from a labeled \emph{source} domain to an unlabeled \emph{target} domain. In graph settings this problem is known as \emph{unsupervised graph domain adaptation} (UGDA), where the goal is to train a model on a labeled source graph and generalize it to an unlabeled target graph that shares the same label space. The difficulty, compared with standard unsupervised domain adaptation, is that the distribution shift is not only semantic but also structural: changing the graph changes message passing, and changing message passing changes the learned representation \cite{gnn_stability}. Consequently, models trained on one graph domain often suffer performance degradation when applied to another, where both node attributes and connectivity patterns may differ.
 
@@ -431,8 +436,8 @@ The baselines cover embedding-alignment, structure-aware, and propagation/spectr
 To address reproducibility concerns, the revised variant should report: number of propagation layers $L$, polynomial order $K\in\{2,3,4,5\}$, hidden dimension $d_h$, Sinkhorn regularization $\varepsilon\in\{0.01,0.05,0.1,0.5\}$, and trade-off weights $\lambda_{\mathrm{feat}}$, $\lambda_{\mathrm{filt}}$, and $\lambda_{\mathrm{Lip}}$. Bootstrap probes are resampled at every training iteration. For all datasets, we run experiments for 5 seeds.
 
 \paragraph{Results.}
-Table~\ref{table:evaluation} shows ...
-\input{src/eval_table.tex}
+Table~\ref{table:evaluation} shows kasu
+\input{src/eval_table2.tex}
 
 \subsection{Bootstrap probe ablation}
 
@@ -464,6 +469,12 @@ A natural next step is source-free adaptation. Since the filter alignment loss c
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \appendix
 \section{Appendix: Additional + Proofs}
+
+\subsection{Additional Experiment 1: Distribution shift and performance degradation}
+In this experiment, we analyze the relationship between the distribution shift due to domains, and the performance degradation of model trained on source domain and tested on target domain. We use Wasserstein distance to measure the distribution shift, and accuracy drop to measure the performance degradation. We find that there is a positive correlation between the two, which suggests that larger distribution shift leads to more performance degradation. This motivates the need for domain adaptation methods that can reduce the distribution shift and improve the performance on target domain.
+
+
+
 
 \subsection{Proof of Proposition~\ref{prop:propagated_wasserstein}}
 \label{app:proof_layer}

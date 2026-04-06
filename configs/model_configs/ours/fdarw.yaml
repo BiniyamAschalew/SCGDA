@@ -1,0 +1,33 @@
+name: "FDARW"
+gnn: "gcn"
+
+num_layers: 2
+hid_dim: 64
+dropout_ratio: 0.1
+activation: "relu"
+mode: "node"
+
+num_neigh: -1
+batch_size: 0
+
+optimizer: "Adam"
+lr: 0.01
+weight_decay: 0.001
+epochs: 100
+
+# polynomial filter settings
+filter: "mono" # one of: cheb, mono, bern
+K: 5
+
+# structural alignment loss
+reweight: True
+reweight_loss_weight: 0.4
+
+
+# domain adaptation weights
+mmd_weight: 0.1
+probe_mmd_weight: 1.0
+
+# MMD estimator sampling
+mmd_sampling_num: 1000
+mmd_times: 5

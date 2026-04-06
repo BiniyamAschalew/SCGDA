@@ -2,11 +2,11 @@ import time
 import torch
 import torch.nn.functional as F
 
-from models.base_model import BaseGDA
+from Learn.Clean_SCGDA.models.base_model import BaseGDA
 # from models.__components.bernnet import BernNetBase
-from models.__components.chebnet import ChebNetBase
+from Learn.Clean_SCGDA.models.__components.chebnet import ChebNetBase
 
-from utils.train_utils.mmd import MMD
+from Learn.Clean_SCGDA.utils.train_utils.mmd import MMD
 
 """SimGDA with spectral filters (Chebyshev) 
 with a frozen filter for the target domain and trainable filter for the source domain

@@ -5,9 +5,9 @@ import torch.nn.functional as F
 
 from torch_geometric.loader import NeighborLoader, DataLoader
 
-from models.base_model import BaseGDA
-from models.ours.filtada.filtada_base import FiltADABase
-from utils.filter_utils import make_gaussian_probe
+from Learn.Clean_SCGDA.models.base_model import BaseGDA
+from Learn.Clean_SCGDA.models.ours.filtada.filtada_base import FiltADABase
+from Learn.Clean_SCGDA.utils.filter_utils import make_gaussian_probe
 
 
 class FiltADA(BaseGDA):

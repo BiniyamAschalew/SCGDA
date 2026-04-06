@@ -12,7 +12,7 @@ import numpy as np
 from torch_geometric.data import Data
 import scipy.io as sio
 
-from data.base_dataset import BaseDataset
+from Learn.Clean_SCGDA.data.base_dataset import BaseDataset
 
 warnings.filterwarnings("ignore", category=DeprecationWarning)
 

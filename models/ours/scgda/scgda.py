@@ -13,9 +13,9 @@ import time
 from torch_geometric.loader import NeighborLoader, DataLoader
 from tqdm import tqdm
 
-from models.base_model import BaseGDA
-from models.ours.scgda.scgda_base import SCGDABase
-from utils.train_utils.mmd import MMD
+from Learn.Clean_SCGDA.models.base_model import BaseGDA
+from Learn.Clean_SCGDA.models.ours.scgda.scgda_base import SCGDABase
+from Learn.Clean_SCGDA.utils.train_utils.mmd import MMD
 
 
 class SCGDA(BaseGDA):

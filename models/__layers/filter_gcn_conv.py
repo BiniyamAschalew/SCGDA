@@ -7,9 +7,9 @@ from torch_geometric.nn.dense.linear import Linear
 from torch_geometric.nn.inits import zeros
 from torch_geometric.utils import add_remaining_self_loops
 
-from models.__layers.prop_gcn_conv import gcn_norm
+from Learn.Clean_SCGDA.models.__layers.prop_gcn_conv import gcn_norm
 
-from models.__filters.build_filter import build_filter
+from Learn.Clean_SCGDA.models.__filters.build_filter import build_filter
 
 
 class FilterGCNConv(torch.nn.Module):

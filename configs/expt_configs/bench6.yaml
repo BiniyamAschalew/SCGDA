@@ -1,0 +1,37 @@
+model_hps:
+  a2gnn: 2
+  adagcn: 2
+  dgsda: 2
+  specreg: 2
+
+transfer_settings:
+  # Airport:
+  #   EUROPE: [USA, BRAZIL]
+  #   USA: [EUROPE, BRAZIL]
+  #   BRAZIL: [USA, EUROPE]
+  # Blog:
+  #   Blog1: [Blog2]
+  #   Blog2: [Blog1]
+  Citation:
+    # Citationv1: [ACMv9, DBLPv7]
+    # DBLPv7: [ACMv9, Citationv1]
+    ACMv9: [DBLPv7, Citationv1]
+  # Twitch:
+  #   EN: [DE]
+  #   DE: [EN]
+
+# prefix:
+device: cuda:0
+# seed: 204
+# repeat: 1
+
+verbose: 0
+
+bench_note: bench6_pygda
+num_seeds: 5
+use_pygda: true
+
+output_dir: ./__saved__/results/benchmark/bench6
+
+wandb: false
+wandb_project: SCGDA

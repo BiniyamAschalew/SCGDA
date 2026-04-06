@@ -1,0 +1,165 @@
+\relax 
+\citation{gcn,recsys,graph_tasks1}
+\citation{material_science,drug_discovery}
+\citation{gnn_stability}
+\@writefile{toc}{\contentsline {title}{Structural Domain Adaptation via Operator-Level Alignment}{1}{}\protected@file@percent }
+\@writefile{toc}{\authcount {1}}
+\@writefile{toc}{\contentsline {author}{Author information scrubbed for double-blind reviewing}{1}{}\protected@file@percent }
+\@writefile{toc}{\contentsline {section}{\numberline {1}Introduction}{1}{}\protected@file@percent }
+\citation{shuman2013emerging,defferrard2016convolutional,gnn_stability}
+\citation{specreg}
+\citation{dgsda}
+\citation{a2gnn,tdss}
+\citation{pygda}
+\citation{gcn,dane,udagcn}
+\citation{a2gnn}
+\citation{dgsda}
+\citation{pygda}
+\citation{dane}
+\citation{adagcn}
+\citation{udagcn,grade}
+\citation{stru_rw}
+\citation{pair_align}
+\citation{jhgda,kbl}
+\@writefile{toc}{\contentsline {section}{\numberline {2}Related Work}{3}{}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{Benchmarking and taxonomy.}{3}{}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{Embedding alignment methods.}{3}{}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{Structure-aware adaptation methods.}{3}{}\protected@file@percent }
+\citation{a2gnn}
+\citation{tdss}
+\citation{specreg,dgsda}
+\@writefile{toc}{\contentsline {paragraph}{Propagation- and spectral-based methods.}{4}{}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{Position of our method.}{4}{}\protected@file@percent }
+\@writefile{toc}{\contentsline {section}{\numberline {3}Preliminaries}{4}{}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {3.1}Problem definition}{4}{}\protected@file@percent }
+\citation{ot_da,stru_rw,pair_align}
+\citation{specreg}
+\citation{dgsda}
+\citation{a2gnn,tdss}
+\citation{stru_rw,pair_align}
+\@writefile{toc}{\contentsline {subsection}{\numberline {3.2}Graph filter and realized propagation operator}{5}{}\protected@file@percent }
+\newlabel{eq:gso_def}{{1}{5}{}{equation.1}{}}
+\newlabel{eq:spectral_response}{{2}{5}{}{equation.2}{}}
+\newlabel{eq:realized_filter}{{3}{5}{}{equation.3}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {3.3}Shared encoder and domain-specific propagation}{5}{}\protected@file@percent }
+\newlabel{eq:encoder_output}{{4}{5}{}{equation.4}{}}
+\newlabel{eq:gnn_update}{{5}{5}{}{equation.5}{}}
+\newlabel{eq:prediction}{{6}{5}{}{equation.6}{}}
+\citation{ego_pad}
+\citation{gnn_stability}
+\@writefile{toc}{\contentsline {section}{\numberline {4}Operator-Level Shift}{6}{}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{Why align realized graph filters?}{6}{}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{A decomposition of structural mismatch.}{6}{}\protected@file@percent }
+\newlabel{eq:filter_gap_decomp}{{7}{6}{}{equation.7}{}}
+\newlabel{eq:stability_bound}{{8}{6}{}{equation.8}{}}
+\citation{ot_da,specreg}
+\@writefile{toc}{\contentsline {paragraph}{From feature shift to propagation shift.}{7}{}\protected@file@percent }
+\newlabel{eq:operator_mismatch}{{9}{7}{}{equation.9}{}}
+\newlabel{prop:propagated_wasserstein}{{1}{7}{}{proposition.1.1}{}}
+\newlabel{eq:propagated_wasserstein}{{10}{7}{}{equation.10}{}}
+\@writefile{toc}{\contentsline {paragraph}{Operator-level transfer bound.}{7}{}\protected@file@percent }
+\newlabel{thm:operator_da}{{1}{7}{}{theorem.1.1}{}}
+\newlabel{eq:operator_da_bound}{{11}{7}{}{equation.11}{}}
+\@writefile{toc}{\contentsline {section}{\numberline {5}Proposed Method}{8}{}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{Overview.}{8}{}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {5.1}Source classification and feature alignment}{8}{}\protected@file@percent }
+\newlabel{eq:supervised_loss}{{12}{8}{}{equation.12}{}}
+\newlabel{eq:feature_law}{{13}{8}{}{equation.13}{}}
+\newlabel{eq:feature_loss}{{14}{8}{}{equation.14}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {5.2}Bootstrap-based filter alignment}{8}{}\protected@file@percent }
+\newlabel{eq:ref_feature_dist}{{15}{8}{}{equation.15}{}}
+\newlabel{eq:bootstrap_probes}{{16}{8}{}{equation.16}{}}
+\newlabel{eq:bootstrap_response}{{17}{9}{}{equation.17}{}}
+\newlabel{eq:response_measure}{{18}{9}{}{equation.18}{}}
+\newlabel{eq:response_loss}{{19}{9}{}{equation.19}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {5.3}Integral-Lipschitz regularization}{9}{}\protected@file@percent }
+\newlabel{prop:coef_ilip}{{2}{9}{}{proposition.1.2}{}}
+\newlabel{eq:coef_ilip}{{20}{9}{}{equation.20}{}}
+\newlabel{eq:ilip_loss}{{21}{9}{}{equation.21}{}}
+\newlabel{eq:filter_loss}{{22}{9}{}{equation.22}{}}
+\citation{pygda}
+\citation{a2gnn}
+\citation{adagcn}
+\citation{dane}
+\citation{dgsda}
+\citation{grade}
+\citation{jhgda}
+\citation{kbl}
+\citation{pair_align}
+\citation{specreg}
+\citation{stru_rw}
+\citation{tdss}
+\citation{udagcn}
+\@writefile{toc}{\contentsline {subsection}{\numberline {5.4}Overall objective}{10}{}\protected@file@percent }
+\newlabel{eq:full_objective_final}{{23}{10}{}{equation.23}{}}
+\@writefile{toc}{\contentsline {paragraph}{Complexity.}{10}{}\protected@file@percent }
+\@writefile{toc}{\contentsline {section}{\numberline {6}Experiments}{10}{}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {6.1}Main performance comparison}{10}{}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{Datasets.}{10}{}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{Baselines.}{10}{}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{Implementation details.}{10}{}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{Results.}{10}{}\protected@file@percent }
+\@writefile{lof}{\contentsline {figure}{\numberline {1}{\ignorespaces Overview of OPAL. A shared encoder produces hidden node representations, while each domain uses its own realized graph filter ${\mathbf  {R}}_D=S_{\theta _D}(\setbox \z@ \hbox {\mathsurround \z@ $\textstyle {\mathbf  {A}}$}\mathaccent "0362{{\mathbf  {A}}}_D)$, reused across layers, to propagate information. Training combines source supervision, Sinkhorn alignment of latent feature distributions, and bootstrap-based alignment of filter responses computed on a common empirical feature support. This directly targets both semantic shift and propagation-induced structural shift without modifying the graph topology.}}{11}{}\protected@file@percent }
+\newlabel{fig:opal}{{1}{11}{}{figure.1}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {6.2}Bootstrap probe ablation}{11}{}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {6.3}Robustness to structural perturbation}{11}{}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {6.4}Understanding realized filters as induced propagation graphs}{11}{}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {6.5}Ablation and hyperparameter study}{11}{}\protected@file@percent }
+\@writefile{toc}{\contentsline {section}{\numberline {7}Conclusion}{11}{}\protected@file@percent }
+\citation{*}
+\bibstyle{splncs04}
+\bibdata{mybibliography}
+\bibcite{og}{1}
+\bibcite{edgemaskdg}{2}
+\bibcite{kbl}{3}
+\bibcite{material_science}{4}
+\bibcite{adalign}{5}
+\@writefile{lot}{\contentsline {table}{\numberline {1}{\ignorespaces Micro-F1 (\%) on Airport, Blog, Citation, and Twitch datasets. Each entry reports mean and standard deviation across seeds. \textcolor {red}{Red}, \textcolor {orange}{Orange}, and \textcolor {blue}{Blue} indicate the top 3 results; \textbf  {bold} indicates the 4th-best result. Avg. Rank is computed over all available transfer tasks, with lower being better.}}{12}{}\protected@file@percent }
+\newlabel{table:benchmark_full_std_merged}{{1}{12}{}{table.1}{}}
+\bibcite{tdss}{6}
+\bibcite{drug_discovery}{7}
+\bibcite{cuturi13}{8}
+\bibcite{adagcn}{9}
+\bibcite{defferrard2016convolutional}{10}
+\bibcite{csbm}{11}
+\bibcite{graphwave}{12}
+\bibcite{attr_gda}{13}
+\bibcite{homophily_gda}{14}
+\bibcite{rsgda}{15}
+\bibcite{sinkhorn_interp}{16}
+\bibcite{gnn_stability}{17}
+\bibcite{dann}{18}
+\bibcite{sinkhorn_sample}{19}
+\bibcite{mmd}{20}
+\bibcite{graphalign}{21}
+\bibcite{graphalign_data}{22}
+\bibcite{recsys}{23}
+\bibcite{graph_tasks2}{24}
+\bibcite{gcn}{25}
+\bibcite{a2gnn}{26}
+\bibcite{pygda}{27}
+\bibcite{stru_rw}{28}
+\bibcite{pair_align}{29}
+\bibcite{dasga}{30}
+\bibcite{ot_da}{31}
+\bibcite{jhgda}{32}
+\bibcite{shuman2013emerging}{33}
+\bibcite{grade}{34}
+\bibcite{udagcn}{35}
+\bibcite{dgsda}{36}
+\bibcite{graphlora}{37}
+\bibcite{specreg}{38}
+\bibcite{cmd}{39}
+\bibcite{gadget}{40}
+\bibcite{dane}{41}
+\bibcite{graph_tasks1}{42}
+\bibcite{ego_pad}{43}
+\bibcite{hga}{44}
+\@writefile{toc}{\contentsline {section}{\numberline {A}Appendix: Additional + Proofs}{15}{}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {A.1}Proof of Proposition~\ref {prop:propagated_wasserstein}}{15}{}\protected@file@percent }
+\newlabel{app:proof_layer}{{A.1}{15}{}{subsection.1.1}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {A.2}Proof of Theorem~\ref {thm:operator_da}}{15}{}\protected@file@percent }
+\newlabel{app:proof_operator_da}{{A.2}{15}{}{subsection.1.2}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {A.3}Proof of Proposition~\ref {prop:coef_ilip}}{16}{}\protected@file@percent }
+\newlabel{app:proof_coefilip}{{A.3}{16}{}{subsection.1.3}{}}
+\gdef \@abspage@last{16}

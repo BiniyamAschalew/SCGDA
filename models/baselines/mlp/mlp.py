@@ -3,8 +3,8 @@ import torch
 import torch.nn.functional as F
 from torch_geometric.loader import NeighborLoader
 
-from models.base_model import BaseGDA
-from models.baselines.mlp.mlp_base import MLPBase
+from Learn.Clean_SCGDA.models.base_model import BaseGDA
+from Learn.Clean_SCGDA.models.baselines.mlp.mlp_base import MLPBase
 
 
 class MLP(BaseGDA):

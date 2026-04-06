@@ -8,10 +8,10 @@ import torch.nn.functional as F
 from torch_geometric.loader import DataLoader
 from torch_geometric.nn import global_mean_pool
 
-from models.__filters.mono import MonoProp
-from models.__layers.build_layer import build_activation, build_layer
-from models.base_model import BaseGDA
-from utils.train_utils.mmd import MMD, Sinkhorn
+from Learn.Clean_SCGDA.models.__filters.mono import MonoProp
+from Learn.Clean_SCGDA.models.__layers.build_layer import build_activation, build_layer
+from Learn.Clean_SCGDA.models.base_model import BaseGDA
+from Learn.Clean_SCGDA.utils.train_utils.mmd import MMD, Sinkhorn
 
 
 class LearnableProbeGenerator(nn.Module):

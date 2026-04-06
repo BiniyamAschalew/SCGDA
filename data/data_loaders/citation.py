@@ -11,7 +11,7 @@ import warnings
 import torch
 from torch_geometric.data import Data
 
-from data.base_dataset import BaseDataset
+from Learn.Clean_SCGDA.data.base_dataset import BaseDataset
 
 warnings.filterwarnings("ignore", category=DeprecationWarning)
 

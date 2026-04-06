@@ -1,0 +1,28 @@
+# nn:
+name: "Default config"
+gnn: "gcn"
+
+num_layers: 2
+hid_dim: 64
+dropout_ratio: 0
+
+# filename: "gnn_test.txt"
+activation: "relu"
+
+mode: "node"
+
+# for each hop, the number of neighbors to sample
+num_neigh: -1 ### need to find the best number of neighbors
+batch_size: 0
+
+optimizer: "Adam"
+lr: 0.01
+weight_decay: 0.001
+
+
+
+mmd: True
+mmd_weight: 0.1
+
+adv: False
+adv_weight: 0.1

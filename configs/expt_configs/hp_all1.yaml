@@ -1,0 +1,47 @@
+models:
+  - a2gnn
+  - adagcn
+  - dane
+  - dgsda
+  - grade
+  - jhgda
+  # - kbl
+  # - pairalign
+  # - specreg
+  # - strurw
+  # - tdss
+  # - udagcn
+
+transfer_settings:
+  Airport:
+    EUROPE: ["USA", "BRAZIL"]
+    USA: ["EUROPE", "BRAZIL"]
+    BRAZIL: ["USA", "EUROPE"]
+  Blog:
+    Blog1: ["Blog2"]
+    Blog2: ["Blog1"]
+  Citation:
+    Citationv1: ["ACMv9", "DBLPv7"]
+    DBLPv7: ["ACMv9", "Citationv1"]
+    ACMv9: ["Citationv1", "DBLPv7"]
+  Twitch:
+    EN: ["DE"]
+    DE: ["EN"]
+
+
+# prefix: None
+device: cuda:0
+verbose: 0
+
+# search_space: "./__hps__/space/imported"
+search_space_dir: "./__hps__/space/safe_space.yaml"
+output_dir: ./__saved__/results/hp_tune
+
+metrics: ["micro_f1", "macro_f1"]
+max_combos: 100
+
+# Set to False to avoid spawning subprocesses (more stable, but no memory isolation)
+isolate_trials: False
+
+wandb: False
+wandb_project: SCGDA

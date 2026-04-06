@@ -1,7 +1,7 @@
 import torch
 
-from utils.filter_utils import conditional_mmd, mmd_rbf
-from utils.ablation_utils.common import as_float
+from Learn.Clean_SCGDA.utils.filter_utils import conditional_mmd, mmd_rbf
+from Learn.Clean_SCGDA.utils.ablation_utils.common import as_float
 
 
 def compute_shift_metrics(

@@ -35,11 +35,11 @@ ROOT = Path(__file__).resolve().parents[2]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
-from data.build_dataset import build_dataset
-from models.build_model import build_model
-from utils.config_utils import build_config
-from utils.expt_utils import set_seed as repo_set_seed
-from utils.train_utils.metrics import BaseMetric
+from Learn.Clean_SCGDA.data.build_dataset import build_dataset
+from Learn.Clean_SCGDA.models.build_model import build_model
+from Learn.Clean_SCGDA.utils.config_utils import build_config
+from Learn.Clean_SCGDA.utils.expt_utils import set_seed as repo_set_seed
+from Learn.Clean_SCGDA.utils.train_utils.metrics import BaseMetric
 
 torch.set_num_threads(1)
 

@@ -2,10 +2,10 @@
 
 import torch
 
-from models.__filters.bern import BernProp
-from models.__filters.cheb import ChebProp
-from models.__filters.mono import MonoProp
-from utils.filter_utils import monomial_to_cheb
+from Learn.Clean_SCGDA.models.__filters.bern import BernProp
+from Learn.Clean_SCGDA.models.__filters.cheb import ChebProp
+from Learn.Clean_SCGDA.models.__filters.mono import MonoProp
+from Learn.Clean_SCGDA.utils.filter_utils import monomial_to_cheb
 
 
 def _toy_edge_index() -> torch.Tensor:

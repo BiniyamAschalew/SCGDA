@@ -4,10 +4,10 @@ import torch
 import torch.nn.functional as F
 from torch import nn
 
-from models.base_model import BaseGDA
-from models.baselines.gnn.gnn_base import GNNBase
-from models.__filters.mono import MonoProp
-from utils.filter_utils import mmd_rbf
+from Learn.Clean_SCGDA.models.base_model import BaseGDA
+from Learn.Clean_SCGDA.models.baselines.gnn.gnn_base import GNNBase
+from Learn.Clean_SCGDA.models.__filters.mono import MonoProp
+from Learn.Clean_SCGDA.utils.filter_utils import mmd_rbf
 
 
 class LearnableProbeDistribution(nn.Module):

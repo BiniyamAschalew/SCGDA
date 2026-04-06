@@ -1,5 +1,5 @@
 from pygda.models import DANE as DANE_imported
-from models.base_model import BaseGDA
+from Learn.Clean_SCGDA.models.base_model import BaseGDA
 
 
 class DANE(BaseGDA):

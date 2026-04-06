@@ -1,0 +1,32 @@
+name: "SimGDA_Filter"
+gnn: "filter_mono"
+
+num_layers: 2
+hid_dim: 64
+dropout_ratio: 0.1
+activation: "relu"
+mode: "node"
+
+divergence: "sinkhorn"
+
+num_neigh: -1
+batch_size: 0
+
+optimizer: "Adam"
+lr: 0.01
+weight_decay: 0.005
+epochs: 200
+
+# A2GNN-style DA settings
+adv: false
+weight: 0.1
+filter_l1_weight: 0.0001
+
+# Source/target monomial basis indices:
+# p=2 -> [0, 0, 1, 0, ...]
+s_pnums: 4
+t_pnums: 4
+cls_pnums: 1
+# Note: in SimGDA_Filter trainer, effective K is auto-set to
+# max(s_pnums, t_pnums, cls_pnums) + 1.
+K: 31

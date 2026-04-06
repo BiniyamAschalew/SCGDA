@@ -1,0 +1,27 @@
+models:
+  - fda
+
+transfer_settings:
+  Airport:
+    EUROPE: ["USA"]
+  Blog:
+    Blog1: ["Blog2"]
+  Citation:
+    ACMv9: ["Citationv1"]
+  Twitch:
+    EN: ["DE"]
+
+device: cuda:0
+verbose: 0
+
+search_space_dir: "./__hps__/space/fda.yaml"
+output_dir: ./__saved__/results/hp_tune/fda
+
+metrics: ["micro_f1", "macro_f1"]
+max_combos: 80
+
+# Set to False to avoid spawning subprocesses (more stable, but no memory isolation)
+isolate_trials: False
+
+wandb: False
+wandb_project: SCGDA

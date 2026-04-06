@@ -1,0 +1,32 @@
+# SCGDA: Spectral Contrastive Graph Domain Adaptation
+# Config matches DGSDA for hyperparameter compatibility
+name: "SCGDA"
+gnn: "gcn"
+
+num_layers: 2
+hid_dim: 64
+dropout_ratio: 0.
+
+activation: "relu"
+mode: "node"
+
+# for each hop, the number of neighbors to sample
+num_neigh: -1
+batch_size: 0
+
+optimizer: "Adam"
+lr: 4e-3
+weight_decay: 0.0
+
+# SCGDA specific params (DGSDA-compatible + new filter depths)
+K: 8                       # K3 - classifier filter depth
+Ks: 1                      # Source filter depth
+Kt: 4                      # Target filter depth
+
+# Loss weights from DGSDA
+alpha: 0.05                # Filter coefficient alignment weight
+beta: 0.5                  # Spherical MMD weight
+gamma: 0.05                # Entropy minimization weight
+delta: 0.1                 # Energy loss (KL divergence) weight
+
+epochs: 100

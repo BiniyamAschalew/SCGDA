@@ -6,8 +6,8 @@ import argparse
 import torch
 import numpy as np
 
-from utils.config_utils import load_config
-from utils.data_utils.svd_transform import svd_transform
+from Learn.Clean_SCGDA.utils.config_utils import load_config
+from Learn.Clean_SCGDA.utils.data_utils.svd_transform import svd_transform
 
 
 

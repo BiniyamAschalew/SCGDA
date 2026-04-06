@@ -1,0 +1,36 @@
+models:
+  - fan
+
+transfer_settings:
+  Airport:
+    BRAZIL: ["EUROPE", "USA"]
+    EUROPE: ["USA", "BRAZIL"]
+    USA: ["EUROPE", "BRAZIL"]
+
+  Blog:
+    Blog1: ["Blog2"]
+    Blog2: ["Blog1"]
+
+  Citation:
+    ACMv9: ["Citationv1", "DBLPv7"]
+    Citationv1: ["ACMv9", "DBLPv7"]
+    DBLPv7: ["ACMv9", "Citationv1"]
+
+  Twitch:
+    EN: ["DE"]
+    DE: ["EN"]
+
+device: cuda:0
+verbose: 0
+borrow_model: a2gnn
+
+search_space_dir: "./__hps__/space/fan.yaml"
+output_dir: "./__saved__/results/hp_tune/fan"
+
+metrics: ["micro_f1", "macro_f1"]
+max_combos: 80
+
+isolate_trials: False
+
+wandb: False
+wandb_project: SCGDA

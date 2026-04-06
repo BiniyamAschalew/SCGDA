@@ -8,7 +8,7 @@ import torch
 import torch.nn.functional as F
 from torch import nn
 
-from prob_form.synthetic_data import SyntheticDomainData
+from Learn.Clean_SCGDA.experiments.motivation.prob_form.synthetic_data import SyntheticDomainData
 
 
 @dataclass

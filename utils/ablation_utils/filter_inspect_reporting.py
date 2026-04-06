@@ -7,7 +7,7 @@ from pathlib import Path
 import matplotlib.pyplot as plt
 import torch
 
-from utils.ablation_utils.common import save_table
+from Learn.Clean_SCGDA.utils.ablation_utils.common import save_table
 
 
 def save_coeff_history_csv(out_path: Path, rows: list[dict]) -> None:

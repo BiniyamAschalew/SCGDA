@@ -15,10 +15,10 @@ ROOT_DIR = Path(__file__).resolve().parents[2]
 if str(ROOT_DIR) not in sys.path:
     sys.path.insert(0, str(ROOT_DIR))
 
-from data.build_dataset import build_dataset
-from models.__components.chebprop import ChebProp
-from utils.config_utils import build_config
-from utils.expt_utils import set_seed
+from Learn.Clean_SCGDA.data.build_dataset import build_dataset
+from Learn.Clean_SCGDA.models.__components.chebprop import ChebProp
+from Learn.Clean_SCGDA.utils.config_utils import build_config
+from Learn.Clean_SCGDA.utils.expt_utils import set_seed
 
 
 def _pairwise_sq_dist(x: torch.Tensor, y: torch.Tensor) -> torch.Tensor:

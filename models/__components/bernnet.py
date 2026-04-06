@@ -2,8 +2,8 @@ from torch import nn
 import torch.nn.functional as F
 from torch_geometric.nn import global_mean_pool
 
-from models.__layers.build_layer import build_activation
-from models.__components.bernprop import BernProp
+from Learn.Clean_SCGDA.models.__layers.build_layer import build_activation
+from Learn.Clean_SCGDA.models.__components.bernprop import BernProp
 
 
 

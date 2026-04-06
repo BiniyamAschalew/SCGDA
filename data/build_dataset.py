@@ -3,13 +3,13 @@ import os.path as osp
 from torch_geometric.utils import degree
 from torch_geometric.transforms import OneHotDegree
 
-from data.data_loaders.airport import AirportDataset
-from data.data_loaders.blog import BlogDataset
-from data.data_loaders.citation import CitationDataset
-from data.data_loaders.twitch import TwitchDataset
-from data.data_loaders.mag import MAGDataset
+from Learn.Clean_SCGDA.data.data_loaders.airport import AirportDataset
+from Learn.Clean_SCGDA.data.data_loaders.blog import BlogDataset
+from Learn.Clean_SCGDA.data.data_loaders.citation import CitationDataset
+from Learn.Clean_SCGDA.data.data_loaders.twitch import TwitchDataset
+from Learn.Clean_SCGDA.data.data_loaders.mag import MAGDataset
 
-from utils.data_utils.svd_transform import svd_transform
+from Learn.Clean_SCGDA.utils.data_utils.svd_transform import svd_transform
 
 def get_dataset(domain: str, config: dict):
     """load the dataset for the specific domain"""

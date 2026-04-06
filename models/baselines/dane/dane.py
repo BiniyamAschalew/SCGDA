@@ -11,9 +11,9 @@ from torch_geometric.loader import NeighborLoader, DataLoader
 from torch_geometric.nn import global_mean_pool
 from torch_geometric.utils import is_undirected, to_undirected
 
-from models.base_model import BaseGDA
-from models.baselines.gnn.gnn_base import GNNBase
-from models.__layers.reverse_layer import GradReverse
+from Learn.Clean_SCGDA.models.base_model import BaseGDA
+from Learn.Clean_SCGDA.models.baselines.gnn.gnn_base import GNNBase
+from Learn.Clean_SCGDA.models.__layers.reverse_layer import GradReverse
 
 
 

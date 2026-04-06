@@ -1,5 +1,6 @@
 import torch
 import torch.nn.functional as F
+import warnings
 
 from geomloss import SamplesLoss
 
@@ -15,6 +16,65 @@ def _normalize_transport_features(source_feat, target_feat, eps=1e-6):
     source_feat = F.normalize(source_feat, p=2, dim=1, eps=eps)
     target_feat = F.normalize(target_feat, p=2, dim=1, eps=eps)
     return source_feat, target_feat
+
+
+def _quantile_transport_1d(sorted_source, sorted_target):
+    grid_size = max(int(sorted_source.numel()), int(sorted_target.numel()))
+    if grid_size <= 0:
+        return sorted_source.new_tensor(0.0)
+    if grid_size == 1:
+        return (sorted_source[0] - sorted_target[0]).abs()
+
+    q = torch.linspace(0.0, 1.0, steps=grid_size, device=sorted_source.device, dtype=sorted_source.dtype)
+
+    def _interp(sorted_values):
+        n = int(sorted_values.numel())
+        if n == 1:
+            return sorted_values.expand_as(q)
+        pos = q * (n - 1)
+        left = torch.floor(pos).long()
+        right = torch.ceil(pos).long()
+        weight = pos - left.to(pos.dtype)
+        return sorted_values[left] * (1.0 - weight) + sorted_values[right] * weight
+
+    interp_source = _interp(sorted_source)
+    interp_target = _interp(sorted_target)
+    return (interp_source - interp_target).abs().mean()
+
+
+def _sliced_w1_fallback(source_feat, target_feat, num_projections=16):
+    source_feat = torch.as_tensor(source_feat)
+    target_feat = torch.as_tensor(target_feat)
+
+    if source_feat.numel() == 0 or target_feat.numel() == 0:
+        return torch.tensor(0.0, device=source_feat.device, dtype=source_feat.dtype)
+
+    if source_feat.dim() != 2 or target_feat.dim() != 2:
+        raise ValueError("Sliced W1 fallback expects 2D tensors of shape [N, D].")
+
+    dim = int(source_feat.size(1))
+    if dim <= 0:
+        return torch.tensor(0.0, device=source_feat.device, dtype=source_feat.dtype)
+
+    if dim == 1:
+        directions = torch.ones((1, 1), device=source_feat.device, dtype=source_feat.dtype)
+    else:
+        gen = torch.Generator(device="cpu")
+        gen.manual_seed(0)
+        directions = torch.randn((num_projections, dim), generator=gen, dtype=source_feat.dtype)
+        directions = directions.to(source_feat.device)
+        directions = F.normalize(directions, p=2, dim=1, eps=1e-12)
+
+    proj_source = source_feat @ directions.t()
+    proj_target = target_feat @ directions.t()
+
+    losses = []
+    for proj_idx in range(proj_source.size(1)):
+        sorted_source = torch.sort(proj_source[:, proj_idx]).values
+        sorted_target = torch.sort(proj_target[:, proj_idx]).values
+        losses.append(_quantile_transport_1d(sorted_source, sorted_target))
+
+    return torch.stack(losses).mean()
 
 
 def get_Sinkhorn(
@@ -51,14 +111,6 @@ def get_Sinkhorn(
     diameter = torch.cdist(all_feat, all_feat, p=2).amax()
     diameter_val = float(diameter.detach().item())
     if diameter_val <= eps:
-        noise_scale = 1e-3
-        source_feat = source_feat + noise_scale * torch.randn_like(source_feat)
-        target_feat = target_feat + noise_scale * torch.randn_like(target_feat)
-        all_feat = torch.cat([source_feat, target_feat], dim=0)
-        diameter = torch.cdist(all_feat, all_feat, p=2).amax()
-        diameter_val = float(diameter.detach().item())
-
-    if diameter_val <= eps:
         return torch.tensor(0.0, device=source_feat.device, dtype=source_feat.dtype)
 
     adaptive_blur = max(float(blur), 0.05 * max(diameter_val, 1e-3))
@@ -72,7 +124,16 @@ def get_Sinkhorn(
         debias=debias,
         backend=backend,
     )
-    loss = sinkhorn_loss(source_feat, target_feat)
+    try:
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore", category=RuntimeWarning)
+            loss = sinkhorn_loss(source_feat, target_feat)
+    except Exception:
+        loss = _sliced_w1_fallback(source_feat, target_feat)
+
+    loss = torch.nan_to_num(loss, nan=0.0, posinf=0.0, neginf=0.0)
+    if not torch.isfinite(loss):
+        loss = _sliced_w1_fallback(source_feat, target_feat)
     return torch.nan_to_num(loss, nan=0.0, posinf=0.0, neginf=0.0)
 
 

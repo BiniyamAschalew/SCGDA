@@ -1,0 +1,32 @@
+name: "FDA"
+gnn: "gcn"
+
+num_layers: 2
+hid_dim: 64
+dropout_ratio: 0.1
+activation: "relu"
+mode: "node"
+
+num_neigh: -1
+batch_size: 0
+
+optimizer: "Adam"
+lr: 0.01
+weight_decay: 0.001
+epochs: 100
+
+# polynomial filter settings
+filter: "cheb" # one of: cheb, mono, bern
+K: 5
+
+# domain adaptation weights
+mmd_weight: 0.1
+probe_mmd_weight: 1.0
+probe_sem_weight: 1.0
+probe_sem_class_conditional: True
+feature_align_proj: True
+feature_align_activation: "relu"
+
+# MMD estimator sampling
+mmd_sampling_num: 1000
+mmd_times: 5

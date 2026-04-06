@@ -1,9 +1,9 @@
 import time
 import os
 
-from utils.config_utils import build_config, load_config
-from utils.expt_utils import to_valid_dir
-from run import run
+from Learn.Clean_SCGDA.utils.config_utils import build_config, load_config
+from Learn.Clean_SCGDA.utils.expt_utils import to_valid_dir
+from Learn.Clean_SCGDA.run import run
 import pandas as pd
 
 
@@ -44,11 +44,11 @@ role_type = ROLE_TYPES[2]
 
 SEED = 2025
 # EPOCHS = 200
-DEVICE = "cuda:1"
+DEVICE = "cuda:2"
 
 USE_TUNED = 2
 
-notes = "no_entropy_loss"
+notes = ""
 BORROW = None
 # BORROW = "dgsda"
 # BORROW = "adagcn"
@@ -59,7 +59,7 @@ FROM_PYGDA = False
 
 id = {
     "model": [30],
-    "dataset": [0,1],
+    "dataset": [2],
     "source": [0],
     "target": [1],
 }

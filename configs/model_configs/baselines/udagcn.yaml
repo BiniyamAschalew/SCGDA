@@ -1,0 +1,22 @@
+# nn:
+name: "UDAGCN"
+gnn: "gcn"
+
+num_layers: 3
+hid_dim: 64
+dropout_ratio: 0.1
+
+activation: "relu"
+
+mode: "node"
+
+num_neigh: -1 ### need to find the best number of neighbors
+batch_size: 0
+
+optimizer: "Adam"
+lr: 0.001
+weight_decay: 0.0
+epochs: 200
+
+### whether to use the training mask only for training
+use_mask: True

@@ -1,0 +1,45 @@
+# BDlite: Bernstein DLITE-style dual-filter adaptation
+name: "DGF"
+gnn: "gcn"
+
+num_layers: 2
+hid_dim: 256
+dropout_ratio: 0.3
+dprate: 0.3
+
+activation: "relu"
+mode: "node"
+
+# for each hop, the number of neighbors to sample
+num_neigh: -1
+batch_size: 0
+
+optimizer: "Adam"
+lr: 0.005
+weight_decay: 0.005
+
+# Bernstein polynomial order
+K: 15
+
+# loss weights
+cls_weight: 1.0
+alpha: 1.0
+beta: 0.5
+gamma: 0.05
+delta: 0.1
+
+# MMD/probe settings
+probe_samples: 2048
+feature_mmd_samples: 256
+feature_mmd_times: 2
+probe_mmd_samples: 256
+probe_mmd_times: 2
+probe_mmd_dim: 64
+
+# adversarial probe optimization
+adv_steps: 1
+adv_lr: 0.005
+adv_weight_decay: 0.0
+adv_reg_weight: 0.001
+
+epochs: 200

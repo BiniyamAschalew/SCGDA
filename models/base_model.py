@@ -7,9 +7,9 @@ import torch
 from torch.nn import Linear, Sequential
 from torch_geometric.loader import NeighborLoader
 
-from utils.train_utils.metrics import BaseMetric
-from utils.expt_utils import WandbHandler
-from models.__layers.build_layer import build_activation
+from Learn.Clean_SCGDA.utils.train_utils.metrics import BaseMetric
+from Learn.Clean_SCGDA.utils.expt_utils import WandbHandler
+from Learn.Clean_SCGDA.models.__layers.build_layer import build_activation
 
 class BaseGDA(ABC):
 
@@ -113,6 +113,26 @@ class BaseGDA(ABC):
 
         loader = NeighborLoader(data, num_neigh, batch_size=batch_size)
         return loader
+
+    def get_mask(self, data, use_mask: bool = False, mask_name: str = "train_mask"):
+        if not use_mask:
+            return torch.ones_like(data.y, dtype=torch.bool, device=data.y.device)
+
+        mask = getattr(data, mask_name, None)
+        if mask is None:
+            return torch.ones_like(data.y, dtype=torch.bool, device=data.y.device)
+        return mask.bool()
+
+    def mask_logits_and_labels(
+        self,
+        logits,
+        data,
+        *,
+        use_mask: bool = False,
+        mask_name: str = "val_mask",
+    ):
+        mask = self.get_mask(data, use_mask=use_mask, mask_name=mask_name)
+        return logits[mask], data.y[mask], mask
 
 
     def early_stop_check(self, model, result, epoch):

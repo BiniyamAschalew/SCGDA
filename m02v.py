@@ -16,15 +16,15 @@ import torch.nn.functional as F
 from sklearn.discriminant_analysis import LinearDiscriminantAnalysis
 from torch import nn
 
-from models.__filters.mono import MonoProp
-from utils.ablation_utils.common import load_pair, sample_idx
-from utils.ablation_utils.motivation_reporting import save_json, save_rows, to_plain_dict
-from utils.ablation_utils.propagation import Propagation
-from utils.ablation_utils.transfer import get_source_train_mask, train_eval_transfer_once
-from utils.config_utils import load_config
-from utils.expt_utils import set_seed
-from utils.filter_utils import mmd_rbf, median_bandwidth
-from utils.train_utils.mmd import Sinkhorn
+from Learn.Clean_SCGDA.models.__filters.mono import MonoProp
+from Learn.Clean_SCGDA.utils.ablation_utils.common import load_pair, sample_idx
+from Learn.Clean_SCGDA.utils.ablation_utils.motivation_reporting import save_json, save_rows, to_plain_dict
+from Learn.Clean_SCGDA.utils.ablation_utils.propagation import Propagation
+from Learn.Clean_SCGDA.utils.ablation_utils.transfer import get_source_train_mask, train_eval_transfer_once
+from Learn.Clean_SCGDA.utils.config_utils import load_config
+from Learn.Clean_SCGDA.utils.expt_utils import set_seed
+from Learn.Clean_SCGDA.utils.filter_utils import mmd_rbf, median_bandwidth
+from Learn.Clean_SCGDA.utils.train_utils.mmd import Sinkhorn
 
 
 SHIFT_CASE_SUMMARY_KEYS = [

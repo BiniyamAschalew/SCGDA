@@ -5,7 +5,7 @@ import torch.nn.functional as F
 from torch.nn import Sequential, Linear
 from torch_geometric.nn import global_mean_pool
 
-from models.__layers.build_layer import build_layer, build_activation
+from Learn.Clean_SCGDA.models.__layers.build_layer import build_layer, build_activation
 
 class GNNBase(nn.Module):
 

@@ -13,8 +13,8 @@ try:
     from .shifts import balanced_labels, build_shift_pair, sample_features
     from .utils import ensure_dir, train_test_split
 except ImportError:
-    from shifts import balanced_labels, build_shift_pair, sample_features
-    from utils import ensure_dir, train_test_split
+    from Learn.Clean_SCGDA.struct_shift.shifts import balanced_labels, build_shift_pair, sample_features
+    from Learn.Clean_SCGDA.struct_shift.utils import ensure_dir, train_test_split
 
 
 def parse_args() -> argparse.Namespace:

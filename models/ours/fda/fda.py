@@ -3,9 +3,9 @@ import torch
 import torch.nn.functional as F
 from torch import nn
 
-from models.base_model import BaseGDA
-from models.ours.fda.fda_base import FDABase
-from models.ours.fda.objective import FDAFilterAlignObjective
+from Learn.Clean_SCGDA.models.base_model import BaseGDA
+from Learn.Clean_SCGDA.models.ours.fda.fda_base import FDABase
+from Learn.Clean_SCGDA.models.ours.fda.objective import FDAFilterAlignObjective
 
 
 class FDA(BaseGDA):

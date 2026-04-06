@@ -1,0 +1,25 @@
+name: "DGSDAProbe"
+gnn: "gcn"
+
+num_layers: 2
+hid_dim: 128
+dropout_ratio: 0.3
+
+activation: "relu"
+
+mode: "node"
+
+num_neigh: -1
+batch_size: 0
+
+optimizer: "Adam"
+lr: 0.01
+weight_decay: 0.01
+
+# same as dgsda
+epochs: 100
+dprate: 0.3
+K: 8
+alpha: 0.05
+beta: 0.5
+gamma: 0.05

@@ -17,11 +17,11 @@ from torch_geometric.utils import to_dense_adj
 # from ..utils import logger, MMD
 # from ..metrics import eval_macro_f1, eval_micro_f1
 
-from models.base_model import BaseGDA
-from models.__components.mixup_base import MixupBase
-from models.__components.reweight_gnn import ReweightGNN
-from models.__layers.reverse_layer import GradReverse
-from utils.train_utils.mmd import MMD
+from Learn.Clean_SCGDA.models.base_model import BaseGDA
+from Learn.Clean_SCGDA.models.__components.mixup_base import MixupBase
+from Learn.Clean_SCGDA.models.__components.reweight_gnn import ReweightGNN
+from Learn.Clean_SCGDA.models.__layers.reverse_layer import GradReverse
+from Learn.Clean_SCGDA.utils.train_utils.mmd import MMD
 
 
 class StruRW(BaseGDA):

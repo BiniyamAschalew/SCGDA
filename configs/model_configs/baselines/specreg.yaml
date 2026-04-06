@@ -1,0 +1,41 @@
+# nn:
+name: "SpecReg"
+gnn: "gcn"
+
+num_layers: 3
+hid_dim: 64
+dropout_ratio: 0.0
+
+# filename: "gnn_test.txt"
+activation: "relu"
+
+mode: "node"
+
+# for each hop, the number of neighbors to sample
+num_neigh: -1 ### need to find the best number of neighbors
+batch_size: 0
+
+optimizer: "Adam"
+weight_decay: 3e-3
+lr: 4e-3
+
+
+
+# mmd: True
+# mmd_weight: 0.1
+
+# adv: False
+# adv_weight: 0.1
+
+# specreg specific params
+ppmi: True
+adv_dim: 40
+
+reg_mode: True
+gamma_adv: 0.1
+
+thr_smooth: -1
+gamma_smooth: 0.001
+
+thr_mfr: -1
+gamma_mfr: 0.001

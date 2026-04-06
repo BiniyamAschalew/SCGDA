@@ -1,0 +1,36 @@
+models:
+  - dgsda
+  # - scgda
+
+transfer_settings:
+  # Twitch:
+  #   DE: ["EN"]
+  #   EN: ["DE"]
+  # Airport:
+  #   EUROPE: ["USA", "BRAZIL"]
+  #   USA: ["EUROPE", "BRAZIL"]
+  #   BRAZIL: ["USA", "EUROPE"]
+  Blog:
+    Blog1: ["Blog2"]
+    Blog2: ["Blog1"]
+  # Citation:
+  #   Citationv1: ["ACMv9", "DBLPv7"]
+  #   DBLPv7: ["ACMv9", "Citationv1"]
+  #   ACMv9: ["Citationv1", "DBLPv7"]
+
+
+# prefix: None
+device: cuda:0
+verbose: 0
+
+# search_space: "./__hps__/space/imported"
+output_dir: ./__saved__/results/hp_tune/limited_dgsda/
+
+metrics: ["micro_f1", "macro_f1"]
+max_combos: 50
+
+# Set to False to avoid spawning subprocesses (more stable, but no memory isolation)
+isolate_trials: False
+
+wandb: False
+wandb_project: SCGDA

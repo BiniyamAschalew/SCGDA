@@ -5,8 +5,8 @@ import torch.nn.functional as F
 from torch_geometric.nn import GCNConv
 from torch_geometric.nn import global_mean_pool
 
-from models.__layers.filter_gcn_conv import FilterGCNConv
-from models.__layers.ppmi_conv import PPMIConv
+from Learn.Clean_SCGDA.models.__layers.filter_gcn_conv import FilterGCNConv
+from Learn.Clean_SCGDA.models.__layers.ppmi_conv import PPMIConv
 
 
 class GNN(torch.nn.Module):

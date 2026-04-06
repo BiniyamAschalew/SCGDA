@@ -6,9 +6,9 @@ Purpose: for comparing the results and ensuring correctness of our implementatio
 import time
 import os
 
-from utils.config_utils import build_config, load_config
-from utils.expt_utils import to_valid_dir
-from run import run
+from Learn.Clean_SCGDA.utils.config_utils import build_config, load_config
+from Learn.Clean_SCGDA.utils.expt_utils import to_valid_dir
+from Learn.Clean_SCGDA.run import run
 import pandas as pd
 
 import pygda

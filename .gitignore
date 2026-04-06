@@ -7,7 +7,7 @@ __*__/
 wandb/
 
 *.csv
-*.yaml
+# *.yaml
 *.yml
 ###
 

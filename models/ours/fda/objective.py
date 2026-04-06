@@ -1,8 +1,8 @@
 import torch
 import torch.nn.functional as F
 
-from models.__filters.build_filter import build_filter
-from utils.train_utils.mmd import MMD
+from Learn.Clean_SCGDA.models.__filters.build_filter import build_filter
+from Learn.Clean_SCGDA.utils.train_utils.mmd import MMD
 
 
 class FDAFilterAlignObjective:

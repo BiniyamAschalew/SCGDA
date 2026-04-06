@@ -1,0 +1,110 @@
+transfer_settings:
+  # airport:
+    # USA: [BRAZIL, EUROPE]
+    # BRAZIL: [USA, EUROPE]
+  #   EUROPE: [USA, BRAZIL]
+  # blog:
+  #   Blog1: [Blog2]
+  #   Blog2: [Blog1]
+  # citation:
+    # ACMv9: [DBLPv7, Citationv1]
+    # DBLPv7: [ACMv9, Citationv1]
+    # Citationv1: [ACMv9, DBLPv7]
+  twitch:
+    EN: [DE]
+  #   DE: [EN]
+
+seed: 2026
+device: cuda:0
+run_mode: hp_ablation        # hp_ablation | full_scenarios | single_case
+
+# Pair used by hp+ablation mode
+search_dataset: citation
+search_source: ACMv9
+search_target: DBLPv7
+objective_case: mono_adv_aligned
+
+max_layers: 6
+num_trials: 3
+metric_sample_size: 2048
+out_dir: ./__saved__/results/ablation/motivation02
+
+kernel_mul: 2.0
+kernel_num: 5
+fix_sigma: None
+
+# lda_dim: 32
+# lda_eps: 1e-6
+
+# Transfer-MLP evaluation settings
+mlp_hid_dim: 64
+mlp_layers: 2
+mlp_dropout: 0.0
+mlp_lr: 1e-3
+mlp_weight_decay: 5e-4
+mlp_epochs: 150
+
+# Monomial filter alignment settings
+mono_degree: 3                # number of terms = mono_degree + 1
+mono_lambda_max: 2.0
+mono_filter_temperature: 1.0
+mono_init: uniform            # uniform | adjacency | identity
+run_tag: ""
+
+align_epochs: 40
+align_log_interval: 10
+align_sample_size: 1024
+align_lr: 1e-2
+align_weight_decay: 0.0
+
+# Probe pushforward alignment mechanism
+alignment_metric: mmd         # mmd | sinkhorn
+sinkhorn_sampling_num: 1024
+sinkhorn_times: 3
+sinkhorn_blur: 0.05
+sinkhorn_p: 2
+sinkhorn_scaling: 0.9
+sinkhorn_debias: true
+sinkhorn_backend: auto
+
+# Core objective terms
+probe_mmd_weight: 1.0
+source_semantic_weight: 1.0
+filter_alignment_weight: 0.1
+filter_coeff_reg_weight: 0.0
+structure_bpr_weight: 0.0
+structure_bpr_samples: 2048
+structure_bpr_margin: 0.0
+spectral_component_weight: 0.0
+spectral_component_topk: 8
+spectral_dirichlet_weight: 0.0
+
+# Induced-filter interpretability metrics
+compute_interpretability: true
+induced_chunk_size: 128
+induced_edge_threshold: 1e-5
+induced_topk: 16
+degree_hist_bins: 20
+motif_max_nodes: 4000
+
+# HP search (random subset of grid)
+hp_max_trials: 6
+hp_seed_offsets: [0]
+ablation_seed_offsets: [0]
+ablation_profiles: [best_full, alignment_mmd, alignment_sinkhorn, no_structure_bpr, no_spectral]
+ablation_interpretability_profiles: [best_full, alignment_mmd, alignment_sinkhorn]
+hp_mmd_penalty: 0.2
+hp_probe_penalty: 0.05
+hp_alignment_metrics: [mmd, sinkhorn]
+hp_probe_mmd_weights: [0.5, 1.0]
+hp_source_semantic_weights: [0.5, 1.0]
+hp_filter_alignment_weights: [0.05, 0.1]
+hp_structure_bpr_weights: [0.0, 0.001]
+hp_spectral_component_weights: [0.0, 0.05]
+hp_spectral_dirichlet_weights: [0.0, 0.05]
+
+# Adversarial probe-distribution settings (min-max game)
+adv_steps: 1
+adv_lr: 3e-3
+adv_weight_decay: 0.0
+adv_distribution_reg_weight: 1e-3

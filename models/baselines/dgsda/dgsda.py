@@ -8,9 +8,9 @@ import numpy as np
 
 from torch_geometric.loader import NeighborLoader, DataLoader
 
-from models.base_model import BaseGDA
-from models.baselines.dgsda.dgsda_base import DGSDABase
-from utils.train_utils.mmd import MMD
+from Learn.Clean_SCGDA.models.base_model import BaseGDA
+from Learn.Clean_SCGDA.models.baselines.dgsda.dgsda_base import DGSDABase
+from Learn.Clean_SCGDA.utils.train_utils.mmd import MMD
 
 
 

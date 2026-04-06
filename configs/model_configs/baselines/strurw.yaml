@@ -1,0 +1,41 @@
+# nn:
+name: "StruRW"
+gnn: "GS"
+
+num_layers: 2
+hid_dim: 128
+dropout_ratio: 0
+
+cls_layers: 2
+cls_dim: 128
+
+# filename: "gnn_test.txt"
+activation: "relu"
+
+# mode: "node"
+
+# for each hop, the number of neighbors to sample
+num_neigh: -1 ### need to find the best number of neighbors
+batch_size: 0
+
+optimizer: "Adam"
+lr: 0.05
+weight_decay: 0.0001
+
+
+
+mmd: True
+mmd_weight: 0.1
+
+# strurw specific params
+pooling: "mean"
+reweight: True
+pseudo: True
+
+ew_start: 100
+ew_freq: 20
+lamb: 0.8
+
+mode: "erm"
+# mode: "mixup"
+bn: False

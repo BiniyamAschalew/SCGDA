@@ -1,0 +1,38 @@
+name: "ADAF"
+gnn: "gcn"
+
+num_layers: 3
+hid_dim: 64
+dropout_ratio: 0.1
+activation: "relu"
+mode: "node"
+
+num_neigh: -1
+batch_size: 0
+
+optimizer: "Adam"
+lr: 0.001
+weight_decay: 0.0
+epochs: 200
+
+# monomial filter settings
+mono_degree: 3
+mono_lambda_max: 2.0
+mono_filter_temperature: 1.0
+mono_init: "uniform" # uniform | adjacency | identity
+
+# alignment loss weights
+probe_mmd_weight: 1.0
+source_semantic_weight: 1.0
+
+# adversarial probe distribution (min-max)
+adv_steps: 1
+adv_lr: 0.003
+adv_weight_decay: 0.0
+adv_distribution_reg_weight: 0.001
+
+# MMD settings
+align_sample_size: 1024
+kernel_mul: 2.0
+kernel_num: 5
+fix_sigma: None

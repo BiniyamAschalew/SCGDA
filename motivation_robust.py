@@ -3,7 +3,7 @@ import time
 import torch
 
 from pathlib import Path
-from utils.config_utils import load_config
+from Learn.Clean_SCGDA.utils.config_utils import load_config
 
 def _build_scenarios(transfer_settings):
     # unpack the transfer scenarios to dataset: (source, target) pairs

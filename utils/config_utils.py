@@ -14,15 +14,21 @@ def load_config(config_path: str):
 def build_config(config_setup: dict, update_config: dict = None, borrow: str = None,
                  use_tuned: int = 0, use_default: bool = False) -> dict:
     configs = {}
+    config_setup = dict(config_setup)
 
-    model = config_setup["model"]
-    model = model.lower()
-    if model in BASELINES:
+    raw_model = str(config_setup["model"]).lower()
+    model = raw_model.split("/", 1)[-1]
+
+    if raw_model.startswith("baselines/") and model in BASELINES:
+        config_setup["model"] = f"baselines/{model}"
+    elif raw_model.startswith("ours/") and model in OURS:
+        config_setup["model"] = f"ours/{model}"
+    elif model in BASELINES:
         config_setup["model"] = f"baselines/{model}"
     elif model in OURS:
         config_setup["model"] = f"ours/{model}"
     else:
-        raise ValueError(f"Model '{model}' not found in baselines or ours.")
+        raise ValueError(f"Model '{raw_model}' not found in baselines or ours.")
     
     for config_type, config_name in config_setup.items():
         config_type = config_type.lower()

@@ -8,9 +8,34 @@ import numpy as np
 
 from torch_geometric.loader import NeighborLoader, DataLoader
 
-from models.base_model import BaseGDA
-from models.baselines.a2gnn.a2gnn_base import A2GNNBase
-from utils.train_utils.mmd import MMD
+from Learn.Clean_SCGDA.models.base_model import BaseGDA
+from Learn.Clean_SCGDA.models.baselines.a2gnn.a2gnn_base import A2GNNBase
+from Learn.Clean_SCGDA.utils.train_utils.mmd import MMD
+
+
+def _weighted_ce_loss(
+    source_logits,
+    source_labels,
+    source_mask,
+    target_logits,
+    target_labels,
+    target_mask,
+    oracle: bool,
+):
+    device = source_logits.device
+    source_count = int(source_mask.sum().item())
+    target_count = int(target_mask.sum().item()) if oracle else 0
+    total_count = source_count + target_count
+
+    if total_count <= 0:
+        return torch.zeros((), device=device, dtype=source_logits.dtype)
+
+    loss = torch.zeros((), device=device, dtype=source_logits.dtype)
+    if source_count > 0:
+        loss = loss + F.cross_entropy(source_logits[source_mask], source_labels[source_mask]) * source_count
+    if oracle and target_count > 0:
+        loss = loss + F.cross_entropy(target_logits[target_mask], target_labels[target_mask]) * target_count
+    return loss / float(total_count)
 
 
 class A2GNN(BaseGDA):
@@ -30,13 +55,24 @@ class A2GNN(BaseGDA):
         return model
 
 
-    def forward_model(self, source_data, target_data, alpha):
+    def forward_model(self, source_data, target_data, alpha, use_mask=False, oracle=False):
 
         # source domain cross entropy loss
         source_logits = self.a2gnn(source_data, self.s_pnums)
         target_logits = self.a2gnn(target_data, self.t_pnums)
 
-        cls_loss = F.nll_loss(F.log_softmax(source_logits, dim=1), source_data.y)
+        source_mask = self.get_mask(source_data, use_mask=use_mask, mask_name="train_mask")
+        target_mask = self.get_mask(target_data, use_mask=use_mask, mask_name="train_mask")
+
+        cls_loss = _weighted_ce_loss(
+            source_logits,
+            source_data.y,
+            source_mask,
+            target_logits,
+            target_data.y,
+            target_mask,
+            oracle=oracle,
+        )
         loss = cls_loss
 
         if self.mode == 'node':
@@ -48,26 +84,28 @@ class A2GNN(BaseGDA):
 
         source_features = self.a2gnn.feat_bottleneck(source_data.x, source_data.edge_index, source_batch, self.s_pnums)
         target_features = self.a2gnn.feat_bottleneck(target_data.x, target_data.edge_index, target_batch, self.t_pnums)
+        source_align_features = source_features[source_mask]
+        target_align_features = target_features[target_mask]
 
         # Adv loss
         if self.adv:
-            source_dlogits = self.a2gnn.domain_classifier(source_features, alpha)
-            target_dlogits = self.a2gnn.domain_classifier(target_features, alpha)
+            source_dlogits = self.a2gnn.domain_classifier(source_align_features, alpha)
+            target_dlogits = self.a2gnn.domain_classifier(target_align_features, alpha)
             
             domain_label = torch.tensor(
-                [0] * source_data.x.shape[0] + [1] * target_data.x.shape[0]
+                [0] * source_dlogits.size(0) + [1] * target_dlogits.size(0)
                 ).to(self.device)
             
             domain_loss = F.cross_entropy(torch.cat([source_dlogits, target_dlogits], 0), domain_label)
             loss = loss + self.weight * domain_loss
         else:
             # MMD loss
-            mmd_loss = MMD(source_features, target_features)
+            mmd_loss = MMD(source_align_features, target_align_features)
             loss = loss + mmd_loss * self.weight
 
         return loss, source_logits, target_logits
 
-    def fit(self, source_data, target_data):
+    def fit(self, source_data, target_data, use_mask=False, oracle=False):
 
         self.num_source_nodes = source_data.x.shape[0]
         self.num_target_nodes = target_data.x.shape[0]
@@ -117,18 +155,29 @@ class A2GNN(BaseGDA):
                 sampled_source_data = sampled_source_data.to(self.device)
                 sampled_target_data = sampled_target_data.to(self.device)
                 
-                loss, source_logits, target_logits = self.forward_model(sampled_source_data, sampled_target_data, alpha)
+                loss, source_logits, target_logits = self.forward_model(
+                    sampled_source_data,
+                    sampled_target_data,
+                    alpha,
+                    use_mask=use_mask,
+                    oracle=oracle,
+                )
                 epoch_loss += loss.item()
 
                 optimizer.zero_grad()
                 loss.backward()
                 optimizer.step()
 
-                source_labels = sampled_source_data.y
-                epoch_source_logits = torch.cat((epoch_source_logits, source_logits))
-                epoch_source_labels = torch.cat((epoch_source_labels, source_labels))
+                train_source_logits, train_source_labels, train_source_mask = self.mask_logits_and_labels(
+                    source_logits,
+                    sampled_source_data,
+                    use_mask=use_mask,
+                    mask_name="train_mask",
+                )
+                if int(train_source_mask.sum().item()) > 0:
+                    epoch_source_logits = torch.cat((epoch_source_logits, train_source_logits))
+                    epoch_source_labels = torch.cat((epoch_source_labels, train_source_labels))
             
-            epoch_source_preds = epoch_source_logits.argmax(dim=1)
             train_results = self.metrics(epoch_source_logits, epoch_source_labels)
 
             self.log(epoch, epoch_loss, train_results)
@@ -143,41 +192,18 @@ class A2GNN(BaseGDA):
 
 
 
-    def predict(self, data, source=False):
+    def predict(self, data, source=False, use_mask=False):
 
         self.a2gnn.eval()
-        loader, pnums = self.target_loader, self.t_pnums
+        pnums = self.s_pnums if source else self.t_pnums
+        data = data.to(self.device)
+        with torch.no_grad():
+            logits = self.a2gnn(data, pnums)
 
-        if source:
-            loader, pnums = self.source_loader, self.s_pnums
-
-        all_logits, all_labels = torch.empty(0).to(self.device), torch.empty(0).to(self.device)
-        for idx, sampled_data in enumerate(loader):
-            sampled_data = sampled_data.to(self.device)
-            with torch.no_grad():
-                logits = self.a2gnn(sampled_data, pnums)
-                labels = sampled_data.y
-
-                all_logits = torch.cat((all_logits, logits), dim=0)
-                all_labels = torch.cat((all_labels, labels), dim=0)
-
-                # if idx == 0:
-                #     logits, labels = logits, sampled_data.y
-                # else:
-                #     sampled_logits, sampled_labels = logits, sampled_data.y
-                #     logits = torch.cat((logits, sampled_logits))
-                #     labels = torch.cat((labels, sampled_labels))
-        # else:
-        #     for idx, sampled_data in enumerate(self.target_loader):
-        #         sampled_data = sampled_data.to(self.device)
-        #         with torch.no_grad():
-        #             logits = self.a2gnn(sampled_data, self.t_pnums)
-
-        #             if idx == 0:
-        #                 logits, labels = logits, sampled_data.y
-        #             else:
-        #                 sampled_logits, sampled_labels = logits, sampled_data.y
-        #                 logits = torch.cat((logits, sampled_logits))
-        #                 labels = torch.cat((labels, sampled_labels))
-
+        logits, labels, _ = self.mask_logits_and_labels(
+            logits,
+            data,
+            use_mask=use_mask,
+            mask_name="val_mask",
+        )
         return logits, labels

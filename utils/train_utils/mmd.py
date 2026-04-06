@@ -1,7 +1,7 @@
 import torch
 import numpy as np
 
-from utils.train_utils.sinkhorn import Sinkhorn
+from Learn.Clean_SCGDA.utils.train_utils.sinkhorn import Sinkhorn
 
 def guassian_kernel(source, target, kernel_mul=2.0, kernel_num=5, fix_sigma=None):
     source = torch.as_tensor(source)

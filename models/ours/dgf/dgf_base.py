@@ -1,7 +1,7 @@
 from torch import nn
 import torch.nn.functional as F
 
-from models.__components.bernprop import BernProp
+from Learn.Clean_SCGDA.models.__components.bernprop import BernProp
 
 
 

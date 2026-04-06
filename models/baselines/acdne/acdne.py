@@ -15,8 +15,8 @@ from scipy.sparse import vstack
 from torch_geometric.loader import NeighborLoader
 from torch_geometric.utils import to_dense_adj
 
-from models.base_model import BaseGDA
-from models.baselines.acdne.acdne_base import ACDNEBase
+from Learn.Clean_SCGDA.models.base_model import BaseGDA
+from Learn.Clean_SCGDA.models.baselines.acdne.acdne_base import ACDNEBase
 
 
 

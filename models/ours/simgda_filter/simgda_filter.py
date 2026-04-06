@@ -7,9 +7,9 @@ import torch
 import torch.nn.functional as F
 from torch_geometric.loader import DataLoader
 
-from models.base_model import BaseGDA
-from models.ours.simgda_filter.simgda_filter_base import SimGDAFilterBase
-from utils.train_utils.mmd import MMD, Sinkhorn
+from Learn.Clean_SCGDA.models.base_model import BaseGDA
+from Learn.Clean_SCGDA.models.ours.simgda_filter.simgda_filter_base import SimGDAFilterBase
+from Learn.Clean_SCGDA.utils.train_utils.mmd import MMD, Sinkhorn
 
 
 class SimGDAFilter(BaseGDA):

@@ -2,8 +2,8 @@ import torch
 from torch.nn import Linear, Sequential
 
 from torch_geometric.nn import GCNConv, SAGEConv, GATConv, GINConv
-from models.__layers.prop_gcn_conv import PropGCNConv
-from models.__layers.filter_gcn_conv import FilterGCNConv
+from Learn.Clean_SCGDA.models.__layers.prop_gcn_conv import PropGCNConv
+from Learn.Clean_SCGDA.models.__layers.filter_gcn_conv import FilterGCNConv
 
 def build_layer(in_dim, out_dim, layer_type):
     layer_type = layer_type.lower()

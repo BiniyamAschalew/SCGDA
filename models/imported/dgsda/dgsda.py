@@ -1,6 +1,6 @@
 from pygda.models import DGSDA as DGSDAImported
 
-from models.base_model import BaseGDA
+from Learn.Clean_SCGDA.models.base_model import BaseGDA
 
 
 class DGSDA(BaseGDA):

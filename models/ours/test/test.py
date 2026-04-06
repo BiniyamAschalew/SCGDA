@@ -5,10 +5,10 @@ import torch.nn.functional as F
 # from torch_geometric.nn import global_mean_pool
 from tqdm import tqdm
 
-from models.base_model import BaseGDA
-from models.ours.test.test_base import TestBase
-from utils.filter_utils import cheb_to_monomial, tensor_to_float_list
-from utils.train_utils.mmd import MMD
+from Learn.Clean_SCGDA.models.base_model import BaseGDA
+from Learn.Clean_SCGDA.models.ours.test.test_base import TestBase
+from Learn.Clean_SCGDA.utils.filter_utils import cheb_to_monomial, tensor_to_float_list
+from Learn.Clean_SCGDA.utils.train_utils.mmd import MMD
 
 
 class Test(BaseGDA):

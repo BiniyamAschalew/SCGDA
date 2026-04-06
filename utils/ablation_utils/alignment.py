@@ -2,12 +2,12 @@ import torch
 import torch.nn.functional as F
 from torch import nn
 
-from models.__components.chebprop import ChebProp
-from models.ours.fda.objective import FDAFilterAlignObjective
-from utils.filter_utils import make_gaussian_probe
-from utils.ablation_utils.common import as_float, project_pair_features, sample_idx
-from utils.ablation_utils.metrics import compute_shift_metrics
-from utils.ablation_utils.propagation import apply_cheb_once, induced_operator_matrix, operator_to_edges
+from Learn.Clean_SCGDA.models.__components.chebprop import ChebProp
+from Learn.Clean_SCGDA.models.ours.fda.objective import FDAFilterAlignObjective
+from Learn.Clean_SCGDA.utils.filter_utils import make_gaussian_probe
+from Learn.Clean_SCGDA.utils.ablation_utils.common import as_float, project_pair_features, sample_idx
+from Learn.Clean_SCGDA.utils.ablation_utils.metrics import compute_shift_metrics
+from Learn.Clean_SCGDA.utils.ablation_utils.propagation import apply_cheb_once, induced_operator_matrix, operator_to_edges
 
 
 def filter_smoothness_loss(temp: torch.Tensor) -> torch.Tensor:
@@ -19,7 +19,7 @@ def filter_smoothness_loss(temp: torch.Tensor) -> torch.Tensor:
 
 def _build_ppmi_positive_edges(data, cfg: dict) -> torch.Tensor:
     """Build PPMI positive edges once for structural BPR regularization."""
-    from models.__layers.ppmi_conv import PPMIConv
+    from Learn.Clean_SCGDA.models.__layers.ppmi_conv import PPMIConv
 
     conv = PPMIConv(
         in_channels=1,

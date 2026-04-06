@@ -1,0 +1,49 @@
+# nn:
+name: "StructAlign2"
+gnn: "bern"
+spectral_filter: "bern"
+
+num_layers: 2
+hid_dim: 64
+dropout_ratio: 0.1
+
+activation: "relu"
+
+mode: "node"
+
+# for each hop, the number of neighbors to sample
+num_neigh: -1
+batch_size: 0
+
+optimizer: "Adam"
+lr: 0.001
+weight_decay: 0.01
+
+mmd: True
+mmd_weight: 0.1
+
+# bernstein filter settings
+K: 10
+
+# structural alignment settings
+struct_align_epochs: 5
+struct_align_init: "static"
+struct_align_static_value: 1.0
+struct_align_lr: 0.01
+struct_align_weight_decay: 0.001
+struct_weight: 1.0
+struct_steps: 8
+moment_orders: [1, 2, 3]
+
+# role settings
+role_dim: 8
+role_weight: 1.0
+role_init_value: 1.0
+
+# kernel mmd settings
+kernel_mul: 2.0
+kernel_num: 5
+kernel_sampling_num: 1000
+kernel_times: 5
+role_kernel_mul: 2.0
+role_kernel_num: 5

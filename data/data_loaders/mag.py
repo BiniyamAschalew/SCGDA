@@ -11,7 +11,7 @@ import torch
 from torch_geometric.data import Data
 from torch_geometric.io import read_txt_array
 
-from data.base_dataset import BaseDataset
+from Learn.Clean_SCGDA.data.base_dataset import BaseDataset
 
 warnings.filterwarnings("ignore", category=DeprecationWarning)
 

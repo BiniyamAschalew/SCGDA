@@ -1,7 +1,7 @@
-from hypothesis.role.static.signal_role import SignalRole
-from hypothesis.role.static.graphwave import GraphWave
-from hypothesis.role.static.struc2vec import Struc2Vec
-from hypothesis.role.static.random_role import RandomRole
+from Learn.Clean_SCGDA.hypothesis.role.static.signal_role import SignalRole
+from Learn.Clean_SCGDA.hypothesis.role.static.graphwave import GraphWave
+from Learn.Clean_SCGDA.hypothesis.role.static.struc2vec import Struc2Vec
+from Learn.Clean_SCGDA.hypothesis.role.static.random_role import RandomRole
 
 
 def build_role(config: dict):
