@@ -1,0 +1,9 @@
+hid_dim: 128
+hid_dim_vae: 128
+lr: 0.0003
+weight_decay: 0.01
+epochs: 300
+dropout_ratio: 0.2
+lambda_r: 0.01
+lambda_d: 0.5
+lambda_f: 0.0001

@@ -1,0 +1,7 @@
+hid_dim: 128
+num_layers: 3
+lr: 0.001
+weight_decay: 0.01
+epochs: 200
+k_cross: 20
+k_within: 10

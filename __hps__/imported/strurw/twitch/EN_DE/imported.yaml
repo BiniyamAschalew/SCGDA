@@ -1,0 +1,7 @@
+hid_dim: 64
+num_layers: 3
+lr: 0.01
+weight_decay: 0.01
+epochs: 400
+dropout_ratio: 0.4
+lamb: 0.6

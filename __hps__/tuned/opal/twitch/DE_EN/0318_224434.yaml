@@ -1,0 +1,6 @@
+alpha: 0.1
+beta: 0.5
+from_pygda: 0
+tuned_params:
+- alpha
+- beta

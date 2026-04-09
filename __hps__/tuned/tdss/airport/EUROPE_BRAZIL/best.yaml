@@ -1,0 +1,20 @@
+name: TDSS
+gnn: gcn
+num_layers: 3
+hid_dim: 64.0
+dropout_ratio: 0.1
+activation: relu
+mode: node
+num_neigh: -1
+batch_size: 0
+optimizer: Adam
+lr: 0.005
+weight_decay: 0.01
+epochs: 400.0
+use_mask: true
+from_pygda: 1.0
+tuned_params:
+- epochs
+- hid_dim
+- lr
+- weight_decay

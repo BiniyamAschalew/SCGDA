@@ -5,7 +5,7 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "${SCRIPT_DIR}"
 
-GPUS=(6 7)
+GPUS=(0 0)
 # GPUS=(5 6 7)
 
 SEEDS=(2029 2030)

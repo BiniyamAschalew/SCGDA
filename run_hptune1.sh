@@ -5,10 +5,12 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "${SCRIPT_DIR}"
 
-GPUS=(4 5)
+# GPUS=(4 5)
 # GPUS=(5 6 7)
+GPUS=(0)
 
-SEEDS=(2029 2030)
+SEEDS=(2028)
+# SEEDS=(2029 2030)
 
 CONFIG="${CONFIG:-hp_all1}"
 SPACE_DIR="${SPACE_DIR:-./__hps__/space/safe_space.yaml}"

@@ -1,6 +1,6 @@
 name: "Airport"
 
-root: "/data/biniyam/datasets/pygda_data/data/Airport"
+root: "/home/irteam/data-vol1/data/Airport"
 domains: ["BRAZIL", "EUROPE", "USA"]
 
 raw_file_names: ["edgelist.txt", "labels.txt"]
@@ -11,3 +11,6 @@ val_split: 0.2
 test_split: 0.0 # actually unused
 
 metric: "micro_f1"
+
+
+

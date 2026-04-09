@@ -44,7 +44,7 @@ role_type = ROLE_TYPES[2]
 
 SEED = 2025
 # EPOCHS = 200
-DEVICE = "cuda:2"
+DEVICE = "cuda:0"
 
 USE_TUNED = 2
 

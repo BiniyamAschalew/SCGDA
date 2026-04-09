@@ -1,0 +1,21 @@
+name: JHGDA
+gnn: gcn
+num_layers: 2
+hid_dim: 64.0
+dropout_ratio: 0.1
+activation: relu
+mode: node
+num_neigh: -1
+batch_size: 0
+optimizer: Adam
+lr: 0.0005
+weight_decay: 0.0001
+epochs: 200.0
+use_mask: true
+pool_ratio: 0.2
+from_pygda: 1.0
+tuned_params:
+- epochs
+- hid_dim
+- lr
+- weight_decay

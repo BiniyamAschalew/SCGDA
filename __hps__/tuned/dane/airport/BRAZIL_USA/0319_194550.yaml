@@ -1,0 +1,10 @@
+epochs: 200
+hid_dim: 128
+lr: 0.001
+weight_decay: 0.0001
+from_pygda: 1
+tuned_params:
+- epochs
+- hid_dim
+- lr
+- weight_decay
